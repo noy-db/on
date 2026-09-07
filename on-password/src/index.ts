@@ -1,0 +1,459 @@
+/**
+ * **@noy-db/on-password** — tier-2 password authenticator slot.
+ *
+ * The user's tier-1 *phrase* is the rarely-typed master that derives
+ * the KEK. This package adds a SEPARATE secret — a password the user
+ * types at each unlock — as a tier-2 slot in the multi-slot keyring.
+ * The two credentials have:
+ *
+ * - **Different lifecycles** — the phrase rotates yearly; the password
+ *   rotates per the developer's policy.
+ * - **Different strength rules** — the phrase is validated against the
+ *   phrase format; the password is validated against a
+ *   length / regex rule the developer chooses.
+ * - **Different storage** — the phrase derives the KEK; the password
+ *   derives a wrapping key that wraps the SAME DEK SET in its own
+ *   keyring slot (LUKS-like multi-slot, wrap-DEKs variant).
+ *
+ * ## Wrap-DEKs format (Path C)
+ *
+ * Slots produced by this package use the wrap-DEKs variant of
+ * `KeyringAuthenticator` — they encrypt the serialized DEK set under
+ * a password-derived AES-GCM key, NOT the KEK. This unifies tier-2
+ * password slots with the tier-0 (paper recovery, `mintPaperRecoveryEntry`)
+ * and tier-3 (`@noy-db/on-pin`'s `wrappedKeyring`) primitives — all
+ * three sidestep the non-extractable-KEK constraint by wrapping the
+ * DEK set rather than the KEK itself.
+ *
+ * Trade-off: an `UnlockedKeyring` produced via password-slot unlock
+ * has `kek: null`. Sensitive operations (`enrollAuthenticator`,
+ * `rotateSecret`) require a tier-1 unlock anyway — re-enter the
+ * master phrase.
+ *
+ * @see https://github.com/noy-db/docs/blob/main/content/docs/services/session-tiers.md → Tier 2 — `on-password`
+ *
+ * @packageDocumentation
+ */
+import { assertRosterAuthenticated, base64ToBuffer, mintWrappedDeksBlob, unwrapDeksFromBlob, ValidationError, type KeyringFile, type NoydbStore } from '@noy-db/hub'
+import type { EnrollAuthenticatorOptions, KeyringAuthenticator, SlotRewrapCeremony, SlotRewrapContext, UnlockedKeyring } from '@noy-db/hub/on'
+
+/**
+ * PBKDF2 iteration count — matches the tier-1 phrase derivation.
+ * Exported as a documented invariant; the actual derivation lives
+ * in hub's canonical wrap-DEKs primitive.
+ */
+export const PASSWORD_PBKDF2_ITERATIONS = 600_000
+
+/** Default minimum password length. Override per-app via `enrollPasswordAuthenticator`. */
+export const PASSWORD_DEFAULT_MIN_LENGTH = 12
+
+// ─── Errors ────────────────────────────────────────────────────────────
+
+export class PasswordTooWeakError extends Error {
+  readonly code = 'PASSWORD_TOO_WEAK' as const
+  readonly minLength: number
+  constructor(minLength: number, message?: string) {
+    super(
+      message ??
+        `Password must be at least ${String(minLength)} characters. ` +
+          'For accounts with a separate tier-1 phrase, prefer a longer password ' +
+          'or pair with TOTP/email-OTP via @noy-db/on-totp or @noy-db/on-email-otp.',
+    )
+    this.name = 'PasswordTooWeakError'
+    this.minLength = minLength
+  }
+}
+
+export class PasswordInvalidError extends Error {
+  readonly code = 'PASSWORD_INVALID' as const
+  constructor(message = 'Password does not unlock this slot.') {
+    super(message)
+    this.name = 'PasswordInvalidError'
+  }
+}
+
+// ─── Public API ────────────────────────────────────────────────────────
+
+/** Options for {@link enrollPasswordAuthenticator}. */
+export interface EnrollPasswordOptions {
+  /** Slot id. Default: `'password'`. */
+  readonly id?: string
+  /** Password the user will type at unlock. Distinct from the tier-1 phrase. */
+  readonly password: string
+  /** Minimum length. Default 12. */
+  readonly minLength?: number
+  /** Optional regex the password must satisfy in addition to length. */
+  readonly pattern?: RegExp
+  /** Tier the active session held when enrolling. Default 1. */
+  readonly enrolledViaTier?: 1 | 2
+}
+
+/**
+ * Build the keyring slot for a tier-2 password authenticator. Returns
+ * an `EnrollAuthenticatorOptions` value the caller hands to
+ * `db.team.enrollAuthenticator(vault, slot)` — separating the cryptographic
+ * step (this function) from the persistence step (the hub) keeps the
+ * package small and lets the hub's policy gate run between the two.
+ *
+ * The slot uses the **wrap-DEKs** variant of `KeyringAuthenticator`:
+ * the DEK set is serialized to JSON and encrypted with AES-GCM under
+ * a PBKDF2-derived key. No requirement on `keyring.kek` — works with
+ * tier-1 unlocked keyrings; throws if `keyring.deks` is empty.
+ *
+ * Usage:
+ *
+ * ```ts
+ * import { enrollPasswordAuthenticator } from '@noy-db/on-password'
+ *
+ * const keyring = await db.team.getKeyring('acme')
+ * const slot = await enrollPasswordAuthenticator(keyring, {
+ *   password: 'strong-password-2026',
+ *   minLength: 14,
+ * })
+ * await db.team.enrollAuthenticator('acme', slot, {
+ *   factors: [{ kind: 'totp' }],
+ * })
+ * ```
+ */
+export async function enrollPasswordAuthenticator(
+  keyring: UnlockedKeyring,
+  options: EnrollPasswordOptions,
+): Promise<EnrollAuthenticatorOptions> {
+  const minLength = options.minLength ?? PASSWORD_DEFAULT_MIN_LENGTH
+  if (options.password.length < minLength) {
+    throw new PasswordTooWeakError(minLength)
+  }
+  if (options.pattern && !options.pattern.test(options.password)) {
+    throw new PasswordTooWeakError(
+      minLength,
+      `Password does not match the configured pattern: ${options.pattern.toString()}.`,
+    )
+  }
+
+  if (keyring.deks.size === 0) {
+    throw new Error(
+      'enrollPasswordAuthenticator: the supplied keyring has no DEKs in memory. ' +
+        'Re-authenticate at tier 1 first.',
+    )
+  }
+
+  // Delegate the wrap-DEKs crypto to the canonical hub primitive.
+  // The slot envelope still stores `salt` inside `meta` for backward
+  // compatibility with the legacy slot format; moving it to top-level
+  // for parity with PaperRecoveryEntry is deferred.
+  const blob = await mintWrappedDeksBlob(keyring.deks, options.password)
+
+  return {
+    id: options.id ?? 'password',
+    method: 'password',
+    wrapKind: 'deks',
+    wrapped_deks: blob.wrappedDeks,
+    iv: blob.iv,
+    meta: {
+      salt: blob.salt,
+      minLength,
+      ...(options.pattern !== undefined ? { pattern: options.pattern.source } : {}),
+    },
+    enrolled_via_tier: options.enrolledViaTier ?? 1,
+  }
+}
+
+/**
+ * Recover the DEK set from a wrap-DEKs password slot. Returns the raw
+ * DEK map; the hub-friendly verifier {@link verifyPasswordSlot} wraps
+ * this and produces a full `UnlockedKeyring`.
+ *
+ * @throws {@link PasswordInvalidError} when the password is wrong or
+ *   the slot is not a wrap-DEKs slot (e.g. a legacy wrap-KEK password
+ *   legacy wrap-KEK slots — those need re-enrollment).
+ *
+ * ⛔ **A slot blob is a BEARER CREDENTIAL.** This function needs no store,
+ * no keyring and no network — the blob authenticates itself under the
+ * password. **Removing the slot from the keyring does not invalidate a
+ * copy of the blob**, because removal rotates no DEKs. Anyone holding a
+ * captured blob and the password keeps the full live DEK set until the
+ * vault's keys are rotated. Treat slot removal as *hiding the slot from
+ * future lookups*, not as revocation, and rotate if a blob may have
+ * leaked. See noy-db/on#6.
+ */
+export async function unwrapDeksWithPassword(
+  slot: KeyringAuthenticator,
+  password: string,
+): Promise<Map<string, CryptoKey>> {
+  if (slot.wrapKind !== 'deks') {
+    throw new PasswordInvalidError(
+      'Password slot is not a wrap-DEKs slot. Pre-pre.8 wrap-KEK password ' +
+        'slots are no longer supported — re-enrol via enrollPasswordAuthenticator.',
+    )
+  }
+
+  const meta = slot.meta as { salt?: unknown }
+  if (typeof meta.salt !== 'string') {
+    throw new PasswordInvalidError(
+      'Password slot is missing the per-slot salt — keyring may be corrupted.',
+    )
+  }
+
+  // Delegate to the canonical wrap-DEKs primitive. The blob's
+  // three fields (salt / iv / wrappedDeks) are reconstructed from
+  // the slot's split layout: salt lives in meta, iv + wrappedDeks
+  // at top level. Previously, this code re-implemented the same crypto
+  // inline.
+  try {
+    return await unwrapDeksFromBlob(
+      { salt: meta.salt, iv: slot.iv, wrappedDeks: slot.wrapped_deks },
+      password,
+    )
+  } catch {
+    throw new PasswordInvalidError()
+  }
+}
+
+/**
+ * Hub-friendly verify callback. Pass to `db.unlockViaAuthenticator`:
+ *
+ * ```ts
+ * import { verifyPasswordSlot } from '@noy-db/on-password'
+ *
+ * const unlocked = await db.team.unlockViaAuthenticator('acme', 'password',
+ *   (slot) => verifyPasswordSlot(slot, 'strong-password-2026',
+ *     { store, vault: 'acme', userId: 'alice' }),
+ * )
+ * ```
+ *
+ * Unwraps the DEK set with the supplied password and returns an
+ * `UnlockedKeyring` the hub installs in its keyring cache. The
+ * returned keyring has `kek: null` — sensitive operations (enrol new
+ * slot, rotate phrase) require a tier-1 unlock from the master phrase.
+ *
+ * The `{ store, vault, userId }` shape works in both contexts:
+ *   - **Warm re-unlock** — db is alive; consumer already has identity
+ *     in memory but pays one cheap `_keyring/<userId>` read.
+ *   - **Cold-start** (`createNoydb({ getKeyring: ... })`) — consumer
+ *     does NOT have a keyring yet; the verifier loads identity from
+ *     disk before returning the unlocked keyring. This is the
+ *     primary cold-start tier-2 path (Pilot1 tier-2b uses this).
+ *
+ * Identity fields (userId, displayName, role, permissions,
+ * authenticators, salt, capability bits, per-keyring policy) are read
+ * directly from the `_keyring/<userId>` envelope's plaintext header —
+ * those fields are not encrypted because the sync engine + grant flow
+ * need them without a key.
+ *
+ * Refuses a slot that is no longer enrolled in the keyring it loads —
+ * but see the revocation caveat on {@link unwrapDeksWithPassword}: that
+ * refusal is hardening, not revocation, and a holder of the raw blob
+ * bypasses it by calling the primitive directly. Rotation is the only
+ * thing that revokes.
+ *
+ * @throws {@link PasswordInvalidError} when the password is wrong, the
+ *   keyring file is missing, or the slot is not enrolled in it.
+ */
+export async function verifyPasswordSlot(
+  slot: KeyringAuthenticator,
+  password: string,
+  options: VerifyPasswordSlotOptions,
+): Promise<UnlockedKeyring> {
+  const deks = await unwrapDeksWithPassword(slot, password)
+
+  const env = await options.store.get(options.vault, '_keyring', options.userId)
+  if (!env) {
+    throw new PasswordInvalidError(
+      `verifyPasswordSlot: no keyring found at "${options.vault}/_keyring/${options.userId}". ` +
+        'Verify the vault and userId are correct.',
+    )
+  }
+  const file = JSON.parse(env._data) as KeyringFile
+  const salt = new Uint8Array(base64ToBuffer(file.salt))
+
+  // #6 — refuse a slot that is no longer in the keyring. Hub's own tier-2
+  // dispatch reaches the verifier through `findAuthenticator`, so it never
+  // presents a removed slot; this guards the DIRECT-primitive path, where a
+  // caller hands us a blob it captured earlier.
+  //
+  // ⛔ THIS IS NOT REVOCATION, and must not be read as closing #6. Two
+  // measured reasons, both of which survive this check:
+  //   1. `unwrapDeksWithPassword` above is EXPORTED. A holder of the blob
+  //      calls it directly, gets the live DEK set, and never reaches this
+  //      line. The assertion is not on that path and cannot be.
+  //   2. Removal rotates nothing, so every DEK the blob unwrapped stays
+  //      valid forever. Declining to hand back a keyring object does not
+  //      un-extract keys that are already in the caller's hands.
+  // Real revocation is rotate-on-removal, which lives in hub
+  // (`removeAuthenticator`), not here. Do not "complete" this by hardening
+  // the message or widening the check — neither moves the guarantee.
+  const stillEnrolled = (file.authenticators ?? []).some((a) => a.id === slot.id)
+  if (!stillEnrolled) {
+    throw new PasswordInvalidError(
+      `verifyPasswordSlot: slot "${slot.id}" is not enrolled in ` +
+        `"${options.vault}/_keyring/${options.userId}". It may have been removed.`,
+    )
+  }
+
+  // #1096 — the identity fields below are read from the PLAINTEXT header, so
+  // without this the store could promote a viewer to admin by editing one word
+  // and have it refused at tier-1 open but accepted here. A vault is only as
+  // strong as its weakest unlock path.
+  //
+  // Verifiable at tier 2 because `deks` above already carries the vault roster
+  // key — it rides the slot's wrapped-DEK blob like any other DEK, and that
+  // blob is authenticated by its own AES-GCM tag under the password. The
+  // canary is deliberately NOT checked: it proves the KEK, and this path has
+  // no KEK by design.
+  await assertRosterAuthenticated(file, deks, options.userId)
+
+  return {
+    userId: file.user_id,
+    displayName: file.display_name,
+    role: file.role,
+    permissions: file.permissions,
+    authenticators: file.authenticators ?? [],
+    salt,
+    ...(file.export_capability !== undefined && { exportCapability: file.export_capability }),
+    ...(file.import_capability !== undefined && { importCapability: file.import_capability }),
+    ...(file.policy !== undefined && { policy: file.policy }),
+    deks,
+    // Wrap-DEKs unlock cannot recover the KEK. Sensitive ops route
+    // through tier-1 via re-entry of the master phrase. Matches the
+    // existing tier-3 (`@noy-db/on-pin`) pattern.
+    kek: null,
+  }
+}
+
+/** Adapter shape required by {@link verifyPasswordSlot}. */
+export interface VerifyPasswordSlotOptions {
+  /** The vault's NoydbStore — used to load `_keyring/<userId>`. */
+  readonly store: NoydbStore
+  /** Vault name — same value passed to `db.openVault(name)`. */
+  readonly vault: string
+  /** User id — same value passed to `createNoydb({ user })`. */
+  readonly userId: string
+}
+
+/**
+ * `SlotRewrapCeremony` factory for password slots — the password parallel
+ * to `webAuthnSlotRewrapCeremony`. Used by hub's
+ * `rotateSecret({ slotCeremonies: { [slotId]: passwordSlotRewrapCeremony(pwd) } })`
+ * to preserve a tier-2 password enrollment across a tier-1 phrase
+ * rotation without forcing the user to re-enroll the password.
+ *
+ * Returns a closure capturing the password so the result matches
+ * hub's `SlotRewrapCeremony` signature `(ctx) => Promise<EnrollAuthenticatorOptions>`
+ * directly. Pass into `slotCeremonies` keyed by the existing slot id:
+ *
+ * ```ts
+ * import { passwordSlotRewrapCeremony } from '@noy-db/on-password'
+ *
+ * await db.team.rotateSecret('acme', {
+ *   oldSecret: oldPhrase,
+ *   newSecret: newPhrase,
+ *   slotCeremonies: {
+ *     'password': passwordSlotRewrapCeremony('strong-password-2026'),
+ *   },
+ * })
+ * ```
+ *
+ * The password itself is unaffected by phrase rotation — what needs to
+ * change is the **wrapped DEK set**: the encrypted blob the slot's
+ * `wrapped_deks` field holds. After rotation the old blob is wrapped
+ * under the OLD KEK; the new blob must hold `ctx.newDeks`.
+ *
+ * ⚠️ **The old blob's DEK VALUES are not stale — only its wrapping is.**
+ * `rotateSecret` rewraps the SAME DEKs under a freshly-derived KEK;
+ * only `rotateKeys` re-mints DEK values. Records are encrypted with
+ * DEKs, so a captured blob keeps decrypting everything across any
+ * number of phrase rotations — see the bearer-credential warning on
+ * {@link unwrapDeksWithPassword} and #6. An earlier revision of this
+ * comment said "now stale because rotateSecret rewrapped them under a
+ * fresh KEK", which reads as though rotation invalidated the captured
+ * blob. It does not.
+ *
+ * ## Revoking a credential — this ceremony is a REQUIRED INPUT to it
+ *
+ * Hub's `revokeAuthenticator` is the real revocation, and it is three steps:
+ * `removeAuthenticator` (hides the slot), `rotateKeys` (mints fresh DEKs —
+ * the step that actually revokes), then `rotateSecret` with a
+ * `slotCeremonies` entry for every slot that STAYS.
+ *
+ * ⛔ **A remaining slot handed no ceremony is DROPPED, not preserved.** After
+ * the `rotateKeys` step its blob wraps DEKs that no longer exist, so keeping
+ * it would leave a credential that silently fails. Its holder must re-enrol.
+ *
+ * So revoking ONE credential means supplying `passwordSlotRewrapCeremony(password)` for
+ * EVERY password slot you intend to keep — and each requires that
+ * credential to be present (the password itself for a password slot, a live authenticator assertion for a WebAuthn slot). Re-wrapping a credential
+ * is the credential's own operation; there is no way to do it on the
+ * holder's behalf.
+ *
+ * ⚠️ **Not in any published hub at the time of writing.**
+ * `revokeAuthenticator` landed on noy-db `main` in `0612b4ac`, AFTER
+ * `@noy-db/hub@0.7.1-pre.0` was cut and published — so it is in neither
+ * `@latest` (0.7.0) nor `@next` (0.7.1-pre.0). Ask npm before promising it to
+ * a consumer; do not infer its version from hub's `main`.
+ *
+ * Single ceremony, one operation:
+ *   1. Validate `oldSlot.method === 'password'` and `oldSlot.wrapKind === 'deks'`.
+ *   2. Re-mint the wrap-DEKs blob via {@link enrollPasswordAuthenticator}
+ *      using the supplied password against `ctx.newDeks`.
+ *   3. Return `EnrollAuthenticatorOptions` preserving `oldSlot.id`,
+ *      `method: 'password'`, and the strength config (`minLength`,
+ *      `pattern`) carried in the old slot's `meta`. Hub validates
+ *      `id` + `method` + `wrapKind` to prevent slot-type swap mid-
+ *      rotation.
+ *
+ * Legacy wrap-KEK password slots cannot be rewrapped via
+ * this ceremony — they must be re-enrolled fresh via
+ * {@link enrollPasswordAuthenticator}. The validation throws
+ * {@link ValidationError} for those.
+ *
+ * @throws {ValidationError} when `oldSlot.method !== 'password'` or
+ *         `oldSlot.wrapKind !== 'deks'`.
+ * @throws {PasswordTooWeakError} when the supplied password fails the
+ *         strength rules carried in `oldSlot.meta` (minLength, pattern).
+ *
+ * @see webAuthnSlotRewrapCeremony — the WebAuthn parallel.
+ */
+export function passwordSlotRewrapCeremony(password: string): SlotRewrapCeremony {
+  return async (ctx: SlotRewrapContext): Promise<EnrollAuthenticatorOptions> => {
+    if (ctx.oldSlot.method !== 'password') {
+      throw new ValidationError(
+        `passwordSlotRewrapCeremony: oldSlot.method is "${ctx.oldSlot.method}"; expected "password". ` +
+          'This ceremony only handles password slots — pair other methods with their own helpers.',
+      )
+    }
+    if (ctx.oldSlot.wrapKind !== 'deks') {
+      throw new ValidationError(
+        'passwordSlotRewrapCeremony: oldSlot is a wrap-KEK slot; expected wrap-DEKs. ' +
+          'Password slots use the wrap-DEKs variant since #26 Path C; legacy wrap-KEK ' +
+          'password slots are not supported here — re-enrol via enrollPasswordAuthenticator.',
+      )
+    }
+
+    // Preserve the strength config the slot was originally enrolled with —
+    // a rotation should not silently downgrade minLength or drop a pattern.
+    const oldMeta = ctx.oldSlot.meta as { minLength?: unknown; pattern?: unknown }
+    const minLength = typeof oldMeta.minLength === 'number' ? oldMeta.minLength : undefined
+    const pattern = typeof oldMeta.pattern === 'string' ? new RegExp(oldMeta.pattern) : undefined
+
+    return enrollPasswordAuthenticator(
+      // enrollPasswordAuthenticator only reads `keyring.deks`, so a
+      // synthetic minimal keyring is enough. The freshly-rewrapped DEKs
+      // come from hub via `ctx.newDeks`.
+      { deks: ctx.newDeks } as UnlockedKeyring,
+      {
+        id: ctx.oldSlot.id,
+        password,
+        ...(minLength !== undefined && { minLength }),
+        ...(pattern !== undefined && { pattern }),
+        // Carry the original tier so hub's anti-slot-swap guard plus
+        // the rotate-recover preservation rule keep the slot's
+        // provenance honest.
+        enrolledViaTier: ctx.oldSlot.enrolled_via_tier,
+      },
+    )
+  }
+}
+
+// All wrap-DEKs crypto helpers (PBKDF2 derivation, base64
+// codecs) live in hub's `team/wrapped-deks.ts` — both this
+// package and `mintPaperRecoveryEntry` share one implementation.
