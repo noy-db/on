@@ -1,8 +1,8 @@
 {
   "name": "@noy-db/on-shamir",
-  "version": "0.7.1-pre.0",
+  "version": "0.8.0-pre.0",
   "description": "k-of-n Shamir Secret Sharing of the vault KEK for multi-party unlock. Any K of N shares recombines the key; fewer than K leaks zero bits. Composable — each share can be protected by any other on-* method. Math and share codecs live in @noy-db/shamir and are re-exported here.",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "author": "vLannaAi <vicio@lanna.ai>",
   "homepage": "https://github.com/noy-db/on/tree/main/on-shamir#readme",
   "repository": {
@@ -26,7 +26,8 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "NOTICE"
   ],
   "engines": {
     "node": ">=22.0.0"
@@ -38,13 +39,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@noy-db/shamir": "^0.7.1-pre.0"
+    "@noy-db/shamir": "^0.8.0-pre.0"
   },
   "peerDependencies": {
-    "@noy-db/hub": "^0.7.0 || ^0.7.1-pre.0"
+    "@noy-db/hub": "^0.7.0 || ^0.7.1-pre.0 || ^0.8.0-pre.0"
   },
   "devDependencies": {
-    "@noy-db/hub": "0.7.0"
+    "@noy-db/hub": "0.8.0-pre.0"
   },
   "keywords": [
     "noy-db",
