@@ -27,5 +27,6 @@
   "bugs": {
     "url": "https://github.com/noy-db/on/issues"
   },
-  "homepage": "https://github.com/noy-db/on#readme"
+  "homepage": "https://github.com/noy-db/on#readme",
+  "license": "Apache-2.0"
 }

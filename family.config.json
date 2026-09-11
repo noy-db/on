@@ -3,5 +3,11 @@
   "manager": "pnpm",
   "binds": "@noy-db/hub/on",
   "publishes": true,
-  "gates": ["architecture", "versions-uniform", "declared-deps", "codemod-rows"]
+  "gates": [
+    "architecture",
+    "versions-uniform",
+    "declared-deps",
+    "codemod-rows",
+    "check-license"
+  ]
 }

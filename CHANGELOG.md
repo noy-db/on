@@ -8,9 +8,56 @@ pre-mode/`pre.json`/normalization machinery would be ceremony at full price for 
 repo does not have. See `scripts/version-set.mjs` for the mechanism that replaced it.
 
 ⚠️ **This changelog does not ship.** Every package's `files` array is
-`["dist", "README.md", "LICENSE"]`, verified — so unlike `@noy-db/hub`, whose changelog *is* in
+`["dist", "README.md", "LICENSE", "NOTICE"]`, verified — so unlike `@noy-db/hub`, whose changelog *is* in
 its tarball and therefore immutable once published, a mistake here can simply be corrected in
 place. Do not apply hub's correct-alongside-in-the-next-entry constraint to this file.
+
+## 0.8.0-pre.0
+
+Relicensed from MIT to Apache-2.0 from this version on. Earlier versions remain MIT.
+
+### Changed
+
+- **Licence: MIT → Apache-2.0**, for all ten packages. `LICENSE` is now the canonical Apache-2.0
+  text with the appendix copyright line completed (`Copyright 2026 vLannaAi`), and each package
+  gains a `NOTICE` (`noy-db — Copyright 2026 vLannaAi`) listed in `files`, so both ship in the
+  tarball. ⚠️ **A licence change is a version event, never a retro-edit** — `0.7.0`, `0.7.1-pre.0`
+  and everything before them stay MIT, and nothing already published is altered. The `LICENSE` link
+  in each README moves with the file; the ten `dist/` surfaces are untouched.
+- The seven hub-binding packages widen their `@noy-db/hub` peer from
+  `^0.7.0 || ^0.7.1-pre.0` to `^0.7.0 || ^0.7.1-pre.0 || ^0.8.0-pre.0` — **appended, never
+  replaced**, so consumers still resolving against the 0.7 line are not cut off. (Seven, not six:
+  `on-shamir` joined the hub-binding set when it moved here in `0.7.1-pre.0`.)
+- Exact dev pins move as a unit to the `0.8.0-pre.0` line: `@noy-db/hub` (×7) and
+  `@noy-db/test-ceremony-conformance` (×2).
+- `on-shamir`'s `@noy-db/shamir` dependency `^0.7.1-pre.0` → `^0.8.0-pre.0`. ⛔ **The old floor is a
+  burned number** — `@noy-db/shamir@0.7.1-pre.0` was unpublished on 2026-09-07 and the name's first
+  surviving public version is `0.8.0-pre.0`, so the previous range floored on something npm no
+  longer serves.
+
+### Added
+
+- **`on-password` gains a `README.md`.** It was the one package whose `files` listed a README that
+  existed on disk nowhere; `@noy-db/on-password@0.7.0` shipped none. (noy-db/on#1)
+  ⭐ **On licence text, the tree and the last tarball disagreed, and only the tree was wrong.**
+  Nine of ten packages listed `LICENSE` in `files` with no such file in this repo — yet
+  `npm pack @noy-db/on-pin@0.7.0 --dry-run` lists a 1.1 kB `LICENSE`, because `0.7.0` was
+  published from the monorepo, whose tree had them. The defect was therefore latent: the first
+  release cut *from this repo* would have shipped ten tarballs with no licence text at all. It is
+  closed here on disk, and `check-license` is what keeps it closed.
+- `family.config.json` runs the `check-license` gate, which asserts the `LICENSE`/`NOTICE`/`license`
+  triple stays consistent, and `.github/workflows/release.yml` is the release caller: it fires only
+  on a GitHub Release a human publishes, so the version is the tag and there is no path to an
+  accidental publish.
+
+### Unchanged, deliberately
+
+- **No code change.** No `src/` file is touched in this release; the ten built surfaces are
+  identical to `0.7.1-pre.0`.
+- **No internal dependency edges were created.** This repo still has none — `version-set.mjs`
+  reported `0 internal range(s) updated`, which is why the cut-time deadlock that bit sibling
+  repos (a sibling devDep rewritten to a version this very release has yet to publish) cannot
+  arise here.
 
 ## 0.7.1-pre.0
 
