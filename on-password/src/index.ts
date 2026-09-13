@@ -247,7 +247,8 @@ export async function unwrapDeksWithPassword(
  * thing that revokes.
  *
  * @throws {@link PasswordInvalidError} when the password is wrong, the
- *   keyring file is missing, or the slot is not enrolled in it.
+ *   keyring file is missing or carries no body, or the slot is not enrolled
+ *   in it.
  */
 export async function verifyPasswordSlot(
   slot: KeyringAuthenticator,
@@ -261,6 +262,16 @@ export async function verifyPasswordSlot(
     throw new PasswordInvalidError(
       `verifyPasswordSlot: no keyring found at "${options.vault}/_keyring/${options.userId}". ` +
         'Verify the vault and userId are correct.',
+    )
+  }
+  // ⚠️ `_data` is OPTIONAL since hub 0.8.0's capsule seam, and hub documents
+  // absence and `''` as the SAME thing: no sealed body. A `_keyring` record
+  // with no body is unreadable, so it fails the same way a missing one does —
+  // kept a separate branch from `!env` only so the message names which it was.
+  if (!env._data) {
+    throw new PasswordInvalidError(
+      `verifyPasswordSlot: the keyring at "${options.vault}/_keyring/${options.userId}" ` +
+        'carries no body. The record exists but is empty — it was not written by a keyring writer.',
     )
   }
   const file = JSON.parse(env._data) as KeyringFile

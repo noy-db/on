@@ -541,7 +541,11 @@ async function readAuditDoc(
   tokenId: string,
 ): Promise<InviteAuditDoc | undefined> {
   const env = await store.get(vault, '_meta', INVITE_AUDIT_DOC_PREFIX + tokenId)
-  if (!env) return undefined
+  // ⚠️ `_data` is OPTIONAL since hub 0.8.0's capsule seam, and hub documents
+  // absence and `''` as the SAME thing: no sealed body. An envelope with no
+  // body carries no audit doc, which is exactly the `!env` case for us — so
+  // both collapse into one guard rather than throwing on a bodyless record.
+  if (!env?._data) return undefined
   try {
     return JSON.parse(env._data) as InviteAuditDoc
   } catch {
