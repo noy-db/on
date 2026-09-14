@@ -545,6 +545,20 @@ async function readAuditDoc(
   // absence and `''` as the SAME thing: no sealed body. An envelope with no
   // body carries no audit doc, which is exactly the `!env` case for us — so
   // both collapse into one guard rather than throwing on a bodyless record.
+  //
+  // ⛔ DO NOT "improve" this into hub's `hasSealedBody` (published at
+  // `@noy-db/hub/capsule`). It tests `_iv`, NOT `_data`, and `_meta` is an
+  // UNENCRYPTED collection: its records carry plaintext JSON in `_data` with
+  // `_iv: ''`, so `hasSealedBody` answers false for every valid audit doc and
+  // this function would report them all missing. There are two kinds of body;
+  // hub's own predicate is `hasSealedBody(env) || (env._data ?? '') !== ''`
+  // and the falsy check below is that second disjunct. Measured against
+  // published 0.8.0, 2026-09-14.
+  //
+  // ⛔ And do not collapse it to `env._data ?? ''`: that reaches
+  // `JSON.parse('')`, whose SyntaxError the catch below would swallow, turning
+  // a bodyless record into a silently-absent one by accident rather than by
+  // decision.
   if (!env?._data) return undefined
   try {
     return JSON.parse(env._data) as InviteAuditDoc

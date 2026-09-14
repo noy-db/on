@@ -268,6 +268,18 @@ export async function verifyPasswordSlot(
   // absence and `''` as the SAME thing: no sealed body. A `_keyring` record
   // with no body is unreadable, so it fails the same way a missing one does —
   // kept a separate branch from `!env` only so the message names which it was.
+  //
+  // ⛔ DO NOT "improve" this into hub's `hasSealedBody` (published at
+  // `@noy-db/hub/capsule`). It tests `_iv`, NOT `_data`, and `_keyring` is an
+  // UNENCRYPTED collection: its records carry plaintext JSON in `_data` with
+  // `_iv: ''`, so `hasSealedBody` answers false for a perfectly valid keyring
+  // and THIS FUNCTION WOULD REJECT EVERY ENROLLED USER. There are two kinds of
+  // body; hub's own predicate is `hasSealedBody(env) || (env._data ?? '') !== ''`
+  // and the falsy check below is that second disjunct. Measured against
+  // published 0.8.0, 2026-09-14.
+  //
+  // ⛔ Nor `env._data ?? ''`: that reaches `JSON.parse('')`, and its SyntaxError
+  // escapes as a raw error instead of the domain error this function documents.
   if (!env._data) {
     throw new PasswordInvalidError(
       `verifyPasswordSlot: the keyring at "${options.vault}/_keyring/${options.userId}" ` +
