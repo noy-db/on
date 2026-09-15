@@ -209,3 +209,67 @@ describe('clearPinState', () => {
     expect(isPinStateValid(state)).toBe(false)
   })
 })
+
+/**
+ * ⛔ CHARACTERIZATION, NOT ASPIRATION (noy-db/on#2). Every bound `on-pin`
+ * enforces lives on the caller-held object and is enforced by MUTATING it, so
+ * a pristine copy is bound by none of them. These tests assert the CURRENT,
+ * DELIBERATE behaviour so that closing the hole becomes a visible decision
+ * with a red test, rather than something a later refactor does by accident —
+ * and so the documented limit cannot drift away from the code.
+ *
+ * Options 2 and 3 from the issue do not survive contact with this package:
+ * a store-side counter would make a deliberately zero-persistence,
+ * offline-only primitive require a store on every resume, and signing the
+ * state needs a key the caller does not hold — but on-pin runs entirely on
+ * the caller's device, so no such key exists. Tier 3 is a convenience bound
+ * by an honest caller; real lockout needs a trusted counter elsewhere.
+ */
+describe('the caller-held state is bound by convention, not by force (#2)', () => {
+  it('a pristine copy survives clearPinState — logout does not reach a copy', async () => {
+    const keyring = await makeTestKeyring()
+    const state = await enrollPin(keyring, { pin: '1234' })
+    const captured = { ...state }
+
+    clearPinState(state)
+    expect(isPinStateValid(state)).toBe(false)
+
+    // The copy never saw the mutation, so the session is still open.
+    const resumed = await resumePin(captured, { pin: '1234' })
+    expect(resumed.deks.has('invoices')).toBe(true)
+  })
+
+  it('a pristine copy resets the attempts counter', async () => {
+    const keyring = await makeTestKeyring()
+    const state = await enrollPin(keyring, { pin: '1234', maxAttempts: 2 })
+    const captured = { ...state }
+
+    await expect(resumePin(state, { pin: '9999' })).rejects.toBeInstanceOf(PinInvalidError)
+    await expect(resumePin(state, { pin: '9999' })).rejects.toBeInstanceOf(PinInvalidError)
+    await expect(resumePin(state, { pin: '1234' })).rejects.toBeInstanceOf(
+      PinAttemptsExceededError,
+    )
+
+    // Reverting to the captured copy hands the attacker the budget back.
+    expect(captured.attempts).toBe(0)
+    const resumed = await resumePin(captured, { pin: '1234' })
+    expect(resumed.deks.has('invoices')).toBe(true)
+  })
+
+  it('but a copy does NOT extend the TTL — expiry is absolute, set at enroll', async () => {
+    // The issue framed expiry as "whatever it was at capture". True, and it is
+    // not a weakening: `expiresAt` is a fixed instant, never advanced on use,
+    // so reverting a copy restores the SAME deadline. Only `attempts` and the
+    // `clearPinState` burn are reversible. Pinned so nobody "fixes" the half
+    // that is not broken.
+    const keyring = await makeTestKeyring()
+    const state = await enrollPin(keyring, { pin: '1234', ttlMs: 60_000 })
+    const captured = { ...state }
+    expect(captured.expiresAt).toBe(state.expiresAt)
+
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(new Date(state.expiresAt).getTime() + 1))
+
+    await expect(resumePin(captured, { pin: '1234' })).rejects.toBeInstanceOf(PinExpiredError)
+  })
+})

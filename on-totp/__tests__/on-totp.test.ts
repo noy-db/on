@@ -62,9 +62,14 @@ describe('totpProvisioningUri', () => {
   })
 })
 
+/**
+ * RFC 6238 Appendix B's SHA1 seed, verbatim: the ASCII string
+ * "12345678901234567890". Module-scoped because the window test below needs
+ * the same external vectors.
+ */
+const SECRET_SHA1 = encodeBase32(new TextEncoder().encode('12345678901234567890'))
+
 describe('RFC 6238 test vectors', () => {
-  // RFC 6238 Appendix B — T = 59s, SHA1 → 94287082 → last 6 digits = 287082
-  const SECRET_SHA1 = encodeBase32(new TextEncoder().encode('12345678901234567890'))
 
   it('vector @ T=59s matches 94287082 (SHA1, 8 digits)', async () => {
     const ok = await verifyTotp(SECRET_SHA1, '94287082', {
@@ -81,6 +86,24 @@ describe('RFC 6238 test vectors', () => {
       timestamp: 1111111109,
       window: 0,
     })
+    expect(ok).toBe(true)
+  })
+
+  /**
+   * ⭐ THE REST OF RFC 6238 APPENDIX B (SHA1), noy-db/on#3. These vectors are
+   * the only EXTERNAL-AUTHOR verification this package can have: the digits
+   * come from the IETF, not from whoever wrote the implementation, so unlike
+   * the rest of this suite they cannot share a blind spot with the code. Two
+   * of the six were present; the other four are here because a partial vector
+   * set looks exactly like a complete one.
+   */
+  it.each([
+    [1111111111, '14050471'],
+    [1234567890, '89005924'],
+    [2000000000, '69279037'],
+    [20000000000, '65353130'],
+  ])('vector @ T=%is matches %s (SHA1, 8 digits)', async (timestamp, expected) => {
+    const ok = await verifyTotp(SECRET_SHA1, expected, { digits: 8, timestamp, window: 0 })
     expect(ok).toBe(true)
   })
 })
@@ -104,31 +127,29 @@ describe('verifyTotp', () => {
     expect(await verifyTotp(secret, '999999')).toBe(false)
   })
 
-  it('accepts ±1 window by default', async () => {
-    const secret = generateTotpSecret()
-    // Pick a timestamp, compute the code at the neighbouring step, verifyTotp now.
-    const now = 1_700_000_000
-    const { generateTotpCode: gen } = await import('../src/index.js')
-    const neighborCode = await gen(secret, {}).catch(() => null) // rough usage
-    void neighborCode
-    // Simplest: verifyTotp(sameStep) should always work.
-    const code = await verifyTotp(secret, await (await import('../src/index.js')).generateTotpCode(secret), {
-      timestamp: now,
-      window: 1,
-    })
-    void code
-    // Directly exercise the window — compute code at step N-1, verifyTotp now expecting window=1.
-    const period = 30
-    const stepAgoTs = now - period
-    const stepAgoSec = Math.floor(stepAgoTs / period) * period
-    // Regenerate by passing timestamp:
-    const oldCode = await ((): Promise<string> => {
-      // Re-use verifyTotp with timestamp override to indirectly assert window=1 accepts stepAgo.
-      return Promise.resolve('dummy')
-    })()
-    void oldCode
-    expect(true).toBe(true) // window test covered implicitly by RFC vectors
-    void stepAgoSec
+  /**
+   * ⛔ THIS TEST USED TO ASSERT `expect(true).toBe(true)`. It built a `'dummy'`
+   * promise, voided every value it computed, and its comment said the window
+   * was "covered implicitly by RFC vectors" — which it was not: every vector
+   * runs at `window: 0`. A vacuous test is worse than a missing one, because
+   * the suite reports it as coverage.
+   *
+   * It was vacuous for a real reason: `generateTotpCode` takes `TotpOptions`,
+   * which has NO `timestamp`, so a code cannot be generated at an arbitrary
+   * step — only `verifyTotp` can override the clock. An RFC vector closes that
+   * gap from the other side: 94287082 is the code for step 1 (T=59), so
+   * verifying it at T=89 (step 2) exercises exactly the ±1 tolerance.
+   */
+  it('accepts a neighbouring step with the default ±1 window, and refuses it at window=0', async () => {
+    // period 30 ⇒ T=59 is step 1, T=89 is step 2, T=29 is step 0.
+    const oneStepLater = { digits: 8, timestamp: 89 } as const
+    expect(await verifyTotp(SECRET_SHA1, '94287082', { ...oneStepLater, window: 1 })).toBe(true)
+    expect(await verifyTotp(SECRET_SHA1, '94287082', { ...oneStepLater, window: 0 })).toBe(false)
+
+    // …and symmetrically, one step early.
+    const oneStepEarlier = { digits: 8, timestamp: 29 } as const
+    expect(await verifyTotp(SECRET_SHA1, '94287082', { ...oneStepEarlier, window: 1 })).toBe(true)
+    expect(await verifyTotp(SECRET_SHA1, '94287082', { ...oneStepEarlier, window: 0 })).toBe(false)
   })
 
   it('rejects codes outside window=0', async () => {

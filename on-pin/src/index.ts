@@ -34,11 +34,18 @@
  *
  * ## Limits (read before shipping)
  *
- * - The `attempts` counter lives inside the `PinResumeState` object.
- *   An attacker with a stale copy of the state can "reset" attempts
- *   by reverting their copy. Real lockout enforcement needs a trusted
- *   counter (server-side or OS secure enclave). Document this to
+ * - ⛔ **EVERY bound here is enforced by MUTATING the caller-held object,
+ *   so a pristine copy is bound by none of them** (noy-db/on#2). Reverting
+ *   to a captured copy resets `attempts`, and — the part that is easy to
+ *   miss — it also undoes {@link clearPinState}, so an explicit logout does
+ *   not reach anyone holding a copy. Real lockout enforcement needs a
+ *   trusted counter (server-side or OS secure enclave). Document this to
  *   consumers.
+ *   ⭐ The one bound a copy does NOT loosen is the TTL: `expiresAt` is a
+ *   fixed instant set at enrolment and never advanced on use, so reverting
+ *   restores the same deadline. All three are pinned by characterization
+ *   tests in `__tests__/on-pin.test.ts` — closing the hole should turn them
+ *   red, which is the point.
  * - Offline brute-force is bounded by PBKDF2 cost + the secrecy of the
  *   state blob. Do not persist the state to a public location.
  * - A 4-digit numeric PIN has only 10,000 possibilities. Even at 100k
@@ -297,8 +304,12 @@ export function isPinStateValid(state: PinResumeState): boolean {
 }
 
 /**
- * Zero the state in place. After this, `resumePin()` will fail.
- * Use on explicit logout.
+ * Zero the state in place. Use on explicit logout.
+ *
+ * ⚠️ **"After this, `resumePin()` will fail" holds only for THIS object.**
+ * The zeroing is a mutation, so any pristine copy taken beforehand still
+ * resumes the session — see the Limits section above (noy-db/on#2). Treat
+ * this as releasing your own reference, not as revoking a session.
  */
 export function clearPinState(state: PinResumeState): void {
   // Overwrite the attempts counter past the max + expire the state.
