@@ -1,7 +1,7 @@
 import eslint from '@eslint/js'
 import tseslint from 'typescript-eslint'
 
-// Self-contained ESLint config for the noy-db-to standalone package.
+// Self-contained ESLint config for the noy-db-on standalone package.
 // Mirrors the rule set extracted from the noy-db monorepo root config.
 export default tseslint.config(
   eslint.configs.recommended,
