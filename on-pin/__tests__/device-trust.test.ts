@@ -321,16 +321,20 @@ describe('eviction tolerance — fail closed, never a lockout', () => {
   })
 
   it('no store and no indexedDB → typed DeviceTrustStorageError', async () => {
+    // ⛔ THE PRECONDITION IS ASSERTED, NOT ASSUMED. This branched on
+    // `typeof indexedDB` and fell back to `expect(true).toBe(true)` when one
+    // was present — measured: happy-dom provides none, so that branch was
+    // unreachable and the test did assert. But it was one environment change
+    // away from going green while measuring nothing AND KEEPING ITS NAME,
+    // which is the failure mode, not the assertion count. If a future
+    // environment supplies indexedDB, this line fails loudly and someone
+    // writes the store-present case deliberately.
+    expect(typeof indexedDB).toBe('undefined')
+
     const keyring = await makeTestKeyring()
-    if (typeof indexedDB === 'undefined') {
-      await expect(enrollDeviceTrust(keyring, { vault: 'main' })).rejects.toBeInstanceOf(
-        DeviceTrustStorageError,
-      )
-    } else {
-      // Environment provides IndexedDB — the default store engages
-      // instead; nothing to assert here.
-      expect(true).toBe(true)
-    }
+    await expect(enrollDeviceTrust(keyring, { vault: 'main' })).rejects.toBeInstanceOf(
+      DeviceTrustStorageError,
+    )
   })
 })
 
