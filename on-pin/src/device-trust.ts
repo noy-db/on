@@ -210,7 +210,7 @@ export interface EnrollDeviceTrustOptions {
   /** Storage override. Default: IndexedDB. */
   readonly store?: DeviceTrustStore
   /**
-   * The vault's policy document (`db.policy.getPolicy(vault)`). When
+   * The vault's policy document (`db.getPolicy(vault)`). When
    * present, the {@link DEVICE_TRUST_GATE} gate is checked and a denial
    * throws the hub's `PolicyDeniedError`. When absent, no gate runs.
    */

@@ -1,5 +1,22 @@
 # @noy-db/on-shamir
 
+<!-- prose-preamble
+// Bindings the illustrative blocks below elide — all of them the READER's
+// own values and transports, never this package's API. Typed on purpose: an
+// `any` here would stop the blocks below checking anything.
+import type { RawShare } from '@noy-db/on-shamir'
+declare const currentKEK: CryptoKey
+declare const secretBytes: ArrayBuffer
+declare const shareStringFromCFO: string
+declare const shareStringFromCOO: string
+declare const shares: readonly RawShare[]
+declare const ceoPasskey: unknown
+// Your own storage / transport — this package ships none of these.
+declare function persistShare(id: string, share: unknown): Promise<void>
+declare function storeUnderPasskey(credential: unknown, share: unknown): Promise<void>
+declare function emailAuditor(link: unknown, share: unknown): Promise<void>
+-->
+
 **k-of-n Shamir Secret Sharing** of the vault KEK for multi-party unlock. Any **K** of **N** enrolled shares recombines the KEK; fewer than K leaks zero bits.
 
 The defining feature is **composability** — each share can itself be protected by any other `@noy-db/on-*` method. Share 1 behind a WebAuthn passkey, share 2 behind an OIDC login, share 3 printed on paper in a corporate safe. Fractional trust across different authentication modes.
@@ -80,8 +97,9 @@ const kek = await combineKEK([shareA, shareB])
 ```ts
 import { splitSecret, combineSecret } from '@noy-db/on-shamir'
 
-const shares = splitSecret(new Uint8Array(secretBytes), 2, 3)
-const recovered = combineSecret([shares[0], shares[1]])
+const [shareA, shareB] = splitSecret(new Uint8Array(secretBytes), 2, 3)
+if (!shareA || !shareB) throw new Error('splitSecret returns n shares')
+const recovered = combineSecret([shareA, shareB])
 // recovered is a Uint8Array — you handle its lifecycle
 ```
 
@@ -90,14 +108,18 @@ JSON form — store shares inside other on-* keyring entries:
 ```ts
 import { encodeShareJSON, decodeShareJSON } from '@noy-db/on-shamir'
 
-const json = encodeShareJSON(shares[0])
+const [firstShare] = shares
+if (!firstShare) throw new Error('splitSecret returns n shares')
+const json = encodeShareJSON(firstShare)
 // { v: 1, x: 1, k: 2, n: 3, y: '<base64>' }
-await keyring.put('_recovery_share_1', json)
+// Persist it however that on-* method keeps its material — this package
+// ships no storage helper, and `UnlockedKeyring` has no `put`.
+await persistShare('_recovery_share_1', json)
 ```
 
 ## API
 
-```ts
+```text
 // High-level — wraps a CryptoKey
 async function splitKEK(kek: CryptoKey, options: { k: number; n: number }): Promise<RawShare[]>
 async function combineKEK(shares: readonly RawShare[]): Promise<CryptoKey>
@@ -164,21 +186,23 @@ The prefix is stripped by the decoder — metadata is recovered from the binary 
 ## Composability recipe — Shamir + any on-* method
 
 ```ts
-import { splitKEK, encodeShareJSON } from '@noy-db/on-shamir'
+import { splitKEK, encodeShareJSON, encodeShareBase32 } from '@noy-db/on-shamir'
 import { createMagicLinkToken } from '@noy-db/on-magic-link'
 // Plus whichever other on-* packages you use
 
-const shares = await splitKEK(currentKEK, { k: 2, n: 3 })
+const [ceoShare, auditorShare, paperShare] = await splitKEK(currentKEK, { k: 2, n: 3 })
+if (!ceoShare || !auditorShare || !paperShare) throw new Error('splitKEK returns n shares')
 
-// Share 1 — passkey
-await webAuthn.enrollWithPayload(ceoPasskey, encodeShareJSON(shares[0]))
+// Share 1 — passkey. `storeUnderPasskey` is YOUR code: no on-* package
+// takes a payload at enrollment.
+await storeUnderPasskey(ceoPasskey, encodeShareJSON(ceoShare))
 
 // Share 2 — magic link to an auditor's email
 const link = createMagicLinkToken('escrow-vault', { ttlMs: 30 * 24 * 60 * 60 * 1000 })
-await emailAuditor(link, encodeShareJSON(shares[1]))
+await emailAuditor(link, encodeShareJSON(auditorShare))
 
 // Share 3 — paper backup
-console.log('Corporate-safe backup:', encodeShareBase32(shares[2]))
+console.log('Corporate-safe backup:', encodeShareBase32(paperShare))
 ```
 
 ## Performance

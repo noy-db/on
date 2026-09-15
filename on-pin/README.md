@@ -1,5 +1,15 @@
 # @noy-db/on-pin
 
+<!-- prose-preamble
+// Bindings the illustrative blocks below elide. Typed on purpose: an `any`
+// here would stop every block below checking anything.
+import type { Noydb } from '@noy-db/hub'
+import type { UnlockedKeyring } from '@noy-db/hub'
+declare const db: Noydb
+// The keyring from the real-factor unlock that must precede enrollment.
+declare const keyring: UnlockedKeyring
+-->
+
 [![npm](https://img.shields.io/npm/v/%40noy-db/on-pin.svg)](https://www.npmjs.com/package/@noy-db/on-pin)
 
 > Session-resume PIN quick-lock for noy-db
@@ -28,10 +38,10 @@ network, no prompt.
 import { enrollDeviceTrust, resumeDeviceTrust } from '@noy-db/on-pin'
 
 // After a real-factor unlock (secret, invite, OIDC) — never cold:
-await enrollDeviceTrust(keyring, { vault: 'main', policy: await db.policy.getPolicy('main') })
+await enrollDeviceTrust(keyring, { vault: 'main', policy: await db.getPolicy('main') })
 
-// On the next cold start of this device:
-const { keyring, resumeTier } = await resumeDeviceTrust('main')
+// On the next cold start of this device — a NEW keyring, from storage:
+const { keyring: resumedKeyring, resumeTier } = await resumeDeviceTrust('main')
 // resumeTier is 3 by default — pass it to checkGate as the session's activeTier.
 ```
 

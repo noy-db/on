@@ -1,5 +1,18 @@
 # @noy-db/on-recovery
 
+<!-- prose-preamble
+// Bindings the illustrative blocks below elide — the reader's own UI helpers
+// and the values carried from one block to the next. Typed on purpose: an
+// `any` here would stop every block below checking anything.
+import type { Noydb } from '@noy-db/hub'
+declare const db: Noydb
+declare const newSecret: string
+declare const parsed: { readonly status: 'valid'; readonly code: string }
+declare function showCodesToUser(codes: readonly string[]): void
+declare function displayRecoveryCodes(codes: readonly string[]): void
+declare function showError(message: string): void
+-->
+
 One-time printable recovery codes for noy-db. The **last-resort unlock path** when the primary authentication (secret, WebAuthn, OIDC) is unavailable. Codes are generated once, shown to the user once, printed on paper, stored in a safe. Each code unlocks the vault exactly **one time** and then burns itself.
 
 Part of the `@noy-db/on-*` authentication family. Sibling packages: `on-webauthn`, `on-oidc`, `on-magic-link`, `on-pin`.
@@ -99,9 +112,12 @@ a transcription error never counts against a rate limit:
 ```ts
 import { parseRecoveryCode } from '@noy-db/on-recovery'
 
-const parsed = parseRecoveryCode(userInput)
-if (parsed.status === 'invalid-format')   return showError('not a recovery code')
-if (parsed.status === 'invalid-checksum') return showError('check for typos')   // transcription, not a guess
+function onRecoverySubmit(userInput: string) {
+  const parsed = parseRecoveryCode(userInput)
+  if (parsed.status === 'invalid-format')   return showError('not a recovery code')
+  if (parsed.status === 'invalid-checksum') return showError('check for typos')   // transcription, not a guess
+  // parsed.status is now 'valid' — carry parsed.code into the hub call below.
+}
 ```
 
 The recovery itself is one hub call. It finds the matching entry, burns it,
@@ -109,7 +125,7 @@ sets the new secret, and by default **auto-rotates the remaining codes** so
 the sheet in the safe stays fully usable:
 
 ```ts
-const { newCodes } = await db.recoverSecret('acme', {
+const { newCodes } = await db.team.recoverSecret('acme', {
   newSecret,
   recoveryProof: { profile: 'paper', payload: { code: parsed.code } },
 })
@@ -120,7 +136,9 @@ if (newCodes.length > 0) showCodesToUser(newCodes)   // show-once, same as enrol
 
 ```ts
 const { newCodes } = await db.team.rotateRecovery('acme', { profile: 'paper' })
-showCodesToUser(newCodes)
+// `newCodes` is optional on the result: `paper` fills it, `shamir` fills
+// `newShares` instead. Narrow before use rather than asserting.
+if (newCodes) showCodesToUser(newCodes)
 ```
 
 Replaces (never appends) the paper sheet in a single envelope write. Under
@@ -129,7 +147,7 @@ unlocked laptop cannot silently mint a sheet for the attacker.
 
 ## API
 
-```ts
+```text
 // Generate a full enrollment
 async function generateRecoveryCodeSet(options: {
   count?: number                 // Default 10, clamped to 1..100

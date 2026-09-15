@@ -43,18 +43,18 @@
  * Enrollment flow
  * ───────────────
  * 1. User is already authenticated (secret or existing session).
- * 2. Call `enrollWebAuthn(keyring, options)`.
+ * 2. Call `enrollWebAuthn(keyring, vault, options?)`.
  * 3. WebAuthn credential is created; PRF or rawId-derived key wraps the KEK.
- * 4. Returns a `WebAuthnEnrollment` — persist this to the noy-db adapter
- *    via `saveEnrollment()`, or store it yourself in any encrypted collection.
+ * 4. Returns a `WebAuthnEnrollment` — persist it yourself, in any collection
+ *    or in IndexedDB. This package ships no storage helper.
  *
  * Unlock flow
  * ───────────
- * 1. Load the `WebAuthnEnrollment` via `loadEnrollment()`.
- * 2. Call `unlockWebAuthn(enrollment, keyring)` — triggers the WebAuthn
+ * 1. Load the `WebAuthnEnrollment` back from wherever you persisted it.
+ * 2. Call `unlockWebAuthn(enrollment, options?)` — triggers the WebAuthn
  *    assertion prompt.
- * 3. On success, returns the unwrapped `CryptoKey` (the KEK) — use it to
- *    re-hydrate the session via `createSession()`.
+ * 3. On success, returns an `UnlockedKeyring`. Pass it to `createNoydb` via
+ *    the `getKeyring` callback; see this package's README.
  */
 
 import { bufferToBase64, base64ToBuffer } from '@noy-db/hub'

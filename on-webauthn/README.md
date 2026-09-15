@@ -1,5 +1,15 @@
 # @noy-db/on-webauthn
 
+<!-- prose-preamble
+// Bindings the illustrative blocks below elide — the reader's own storage and
+// store choice. Typed on purpose: an `any` here would stop the blocks below
+// checking anything.
+import type { NoydbStore } from '@noy-db/hub'
+import type { WebAuthnEnrollment } from '@noy-db/on-webauthn'
+declare const store: NoydbStore
+declare function loadEnrollmentFromIDB(): Promise<WebAuthnEnrollment>
+-->
+
 [![npm](https://img.shields.io/npm/v/%40noy-db/on-webauthn.svg)](https://www.npmjs.com/package/@noy-db/on-webauthn)
 
 > WebAuthn hardware-key keyrings for noy-db

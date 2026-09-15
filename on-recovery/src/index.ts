@@ -24,7 +24,7 @@
  * This delegation aligns recovery with the hub's wrap-DEKs primitive
  * (the same shape used by `@noy-db/on-pin` and now `@noy-db/on-password`
  * after the wrap-DEKs path change). It eliminates the format mismatch
- * that made the previous package version unusable with `db.enrollRecovery`.
+ * that made the previous package version unusable with `db.team.enrollRecovery`.
  *
  * ## Usage
  *
@@ -37,7 +37,7 @@
  * showCodesToUser(codes)
  * await db.team.enrollRecovery('acme', { profile: 'paper', entries })
  *
- * // RECOVER — user types one back later (handled by db.recoverSecret)
+ * // RECOVER — user types one back later (handled by db.team.recoverSecret)
  * const parsed = parseRecoveryCode(userInput)
  * if (parsed.status !== 'valid') return handleInvalid(parsed.status)
  * await db.team.recoverSecret('acme', {
@@ -93,8 +93,8 @@ export type ParseResult =
  * via `db.team.enrollRecovery({ profile: 'paper', entries })`.
  *
  * Internally calls the hub's `mintPaperRecoveryEntry` once per code.
- * The hub's wrap-DEKs format is preserved end-to-end — `db.enrollRecovery`
- * stores the entries verbatim and `db.recoverSecret` consumes them
+ * The hub's wrap-DEKs format is preserved end-to-end — `db.team.enrollRecovery`
+ * stores the entries verbatim and `db.team.recoverSecret` consumes them
  * via `unwrapDeksFromPaperEntry`.
  */
 export async function generateRecoveryCodeSet(
@@ -112,7 +112,7 @@ export async function generateRecoveryCodeSet(
     const raw = generateRawCode()
     const formatted = formatCodeForDisplay(raw)
     // The hub stores entries keyed on the NORMALIZED code (raw, no
-    // hyphens). Mint with the normalized form so `db.recoverSecret`'s
+    // hyphens). Mint with the normalized form so `db.team.recoverSecret`'s
     // `normalizePaperCode(input)` matches at unlock time.
     const entry = await mintPaperRecoveryEntry(opts.deks, raw, generateULID())
     codes.push(formatted)
