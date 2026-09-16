@@ -1,7 +1,7 @@
 {
   "name": "@noy-db/on-shamir",
   "version": "0.8.0",
-  "description": "k-of-n Shamir Secret Sharing of the vault KEK for multi-party unlock. Any K of N shares recombines the key; fewer than K leaks zero bits. Composable — each share can be protected by any other on-* method. Math and share codecs live in @noy-db/shamir and are re-exported here.",
+  "description": "k-of-n Shamir Secret Sharing of the vault KEK for multi-party unlock. Any K of N shares recombines the key; fewer than K leaks zero bits. Composable \u2014 each share can be protected by any other on-* method. Math and share codecs live in @noy-db/shamir and are re-exported here.",
   "license": "Apache-2.0",
   "author": "vLannaAi <vicio@lanna.ai>",
   "homepage": "https://github.com/noy-db/on/tree/main/on-shamir#readme",
@@ -36,7 +36,7 @@
     "build": "tsup",
     "test": "vitest run",
     "lint": "eslint src/",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json"
   },
   "dependencies": {
     "@noy-db/shamir": "^0.8.0-pre.0"

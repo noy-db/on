@@ -81,6 +81,9 @@ async function makeTestKeyring(): Promise<UnlockedKeyring> {
     displayName: 'Alice',
     role: 'owner',
     permissions: { invoices: 'rw', clients: 'rw' },
+    // Required by `UnlockedKeyring`; empty is the honest value for a
+    // fixture that enrols no authenticator.
+    authenticators: [],
     deks: new Map([
       ['invoices', dek1],
       ['clients', dek2],
@@ -101,7 +104,11 @@ async function encryptWithDek(dek: CryptoKey, plaintext: string): Promise<{ iv: 
 }
 
 async function decryptWithDek(dek: CryptoKey, blob: { iv: Uint8Array; ct: ArrayBuffer }): Promise<string> {
-  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: blob.iv }, dek, blob.ct)
+  const plain = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: blob.iv as BufferSource },
+    dek,
+    blob.ct,
+  )
   return new TextDecoder().decode(plain)
 }
 

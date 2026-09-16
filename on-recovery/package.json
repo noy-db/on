@@ -1,7 +1,7 @@
 {
   "name": "@noy-db/on-recovery",
   "version": "0.8.0",
-  "description": "One-time printable recovery codes for noy-db — last-resort vault unlock when the secret, passkey, and OIDC provider are all unavailable. Base32 + checksum codes, PBKDF2-derived wrapping keys, burn-on-use. Part of the @noy-db/on-* authentication family.",
+  "description": "One-time printable recovery codes for noy-db \u2014 last-resort vault unlock when the secret, passkey, and OIDC provider are all unavailable. Base32 + checksum codes, PBKDF2-derived wrapping keys, burn-on-use. Part of the @noy-db/on-* authentication family.",
   "license": "Apache-2.0",
   "author": "vLannaAi <vicio@lanna.ai>",
   "homepage": "https://github.com/noy-db/on/tree/main/on-recovery#readme",
@@ -36,7 +36,7 @@
     "build": "tsup",
     "test": "vitest run",
     "lint": "eslint src/",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json"
   },
   "peerDependencies": {
     "@noy-db/hub": "^0.7.0 || ^0.7.1-pre.0 || ^0.8.0-pre.0"

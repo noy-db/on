@@ -82,7 +82,7 @@ describe('generateRecoveryCodeSet (delegates to hub mintPaperRecoveryEntry)', ()
     expect(typeof e.wrappedDeks).toBe('string')
     expect(typeof e.enrolledAt).toBe('string')
     // Anti-regression: the broken pre.7 shape had `wrappedKEK` instead.
-    expect((e as Record<string, unknown>).wrappedKEK).toBeUndefined()
+    expect((e as unknown as Record<string, unknown>).wrappedKEK).toBeUndefined()
   }, KDF_TIMEOUT)
 
   it('rejects out-of-range count', async () => {

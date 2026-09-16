@@ -233,9 +233,13 @@ describe('@noy-db/on-password — wrap-DEKs enroll + verify (#26 Path C)', () =>
 
     // The store edits one word. No key, no prior file.
     const env = (await store.get('acme', '_keyring', 'bob'))!
+    // `_data` is optional since hub 0.8.0's capsule seam. A `_keyring` record
+    // without one is a broken fixture, not a case under test — assert rather
+    // than coerce, so the failure names the cause.
+    expect(env._data).toBeDefined()
     await store.put('acme', '_keyring', 'bob', {
       ...env,
-      _data: env._data.replace('"role":"viewer"', '"role":"admin"'),
+      _data: env._data!.replace('"role":"viewer"', '"role":"admin"'),
     })
 
     await expect(

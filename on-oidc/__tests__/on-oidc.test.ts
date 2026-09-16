@@ -22,7 +22,8 @@ import {
   KeyConnectorError,
   OidcDeviceSecretNotFoundError,
 } from '../src/index.js'
-import type { OidcProviderConfig, UnlockedKeyring } from '../src/index.js'
+import type { UnlockedKeyring } from '@noy-db/hub'
+import type { OidcProviderConfig } from '../src/index.js'
 
 // ─── JWT helpers ──────────────────────────────────────────────────────────────
 
@@ -72,6 +73,9 @@ async function makeKeyring(): Promise<UnlockedKeyring> {
     displayName: 'Alice',
     role: 'owner',
     permissions: { invoices: 'rw', clients: 'rw' },
+    // Required by `UnlockedKeyring`; empty is the honest value for a
+    // fixture that enrols no authenticator.
+    authenticators: [],
     deks: new Map([['invoices', dek], ['clients', dek]]),
     kek: null,
     salt: new Uint8Array(32).fill(9),

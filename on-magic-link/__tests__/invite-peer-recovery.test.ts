@@ -259,7 +259,7 @@ describe('audit doc + payload encoding', () => {
     })
     const env = await store.get('acme', '_meta', `invite-audit-${payload.tokenId}`)
     expect(env).toBeDefined()
-    const audit = JSON.parse(env!._data) as Record<string, unknown>
+    const audit = JSON.parse(env!._data!) as Record<string, unknown>
     expect(audit.tokenId).toBe(payload.tokenId)
     expect(audit.kind).toBe('invite')
     expect(audit.issuer).toBe('alice')
@@ -283,7 +283,7 @@ describe('audit doc + payload encoding', () => {
     await acceptInvite(encoded, { store, newPhrase: BOB_NEW_PHRASE })
 
     const env = await store.get('acme', '_meta', `invite-audit-${payload.tokenId}`)
-    const audit = JSON.parse(env!._data) as { acceptedAt?: string }
+    const audit = JSON.parse(env!._data!) as { acceptedAt?: string }
     expect(typeof audit.acceptedAt).toBe('string')
   }, 180_000)
 

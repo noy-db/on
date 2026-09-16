@@ -83,7 +83,12 @@ import {
  * `app:*` gate allows (built-in gates fail closed), which matches the
  * opt-in default: the mode works until the owner forbids it.
  */
-export const DEVICE_TRUST_GATE: GateName = 'app:device-trust'
+// ⚠️ `as const`, NOT `: GateName`. Typed as the wide `GateName`, a computed
+// key built from this constant — `{ [DEVICE_TRUST_GATE]: { … } }` — widens to
+// an index signature and is not assignable to
+// `Partial<Record<GateName, GatePolicy>>`, so every caller configuring this
+// gate got a type error on correct code. `satisfies` keeps the constraint.
+export const DEVICE_TRUST_GATE = 'app:device-trust' as const satisfies GateName
 
 /**
  * Session tier a device-trust resume may claim. Tier 1 (secret) is

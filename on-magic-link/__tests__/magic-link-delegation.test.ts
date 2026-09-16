@@ -75,7 +75,9 @@ interface Payment { id: string; invoiceId: string; amount: number }
 async function freshVault(): Promise<{ db: Noydb; vault: Vault; store: NoydbStore }> {
   const store = memoryStore()
   const db = await createNoydb({ store, secret: 'pw', user: 'owner' })
-  const vault = await db.openVault('acme', { secret: 'pw' })
+  // `openVault` takes no `secret` — the secret is given to `createNoydb`.
+  // Passing one here was silently ignored.
+  const vault = await db.openVault('acme')
   return { db, vault, store }
 }
 
@@ -135,8 +137,13 @@ describe('issueMagicLinkDelegation → claimMagicLinkDelegation', () => {
     // Fetch the stored envelope directly and decrypt with the grantee's DEK.
     const env = await store.get('acme', 'invoices', 'inv-1')
     expect(env).not.toBeNull()
-    const iv = Uint8Array.from(atob(env!._iv), c => c.charCodeAt(0))
-    const ct = Uint8Array.from(atob(env!._data), c => c.charCodeAt(0))
+    // `_iv`/`_data` are optional since hub 0.8.0's capsule seam. A sealed
+    // record must carry both; assert it so a bodyless envelope fails here by
+    // name rather than as an `atob(undefined)` further down.
+    expect(env!._iv).toBeDefined()
+    expect(env!._data).toBeDefined()
+    const iv = Uint8Array.from(atob(env!._iv!), c => c.charCodeAt(0))
+    const ct = Uint8Array.from(atob(env!._data!), c => c.charCodeAt(0))
     // #1041: the body is sealed with record-identity AAD, so a delegated DEK
     // must reproduce it to read anything. That is the delegation contract now —
     // `recordAadFor` is exported from `@noy-db/hub` for exactly this caller.

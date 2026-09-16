@@ -31,7 +31,8 @@ import {
 } from '../src/index.js'
 import { ValidationError } from '@noy-db/hub'
 import { runCeremonyConformanceTests } from '@noy-db/test-ceremony-conformance'
-import type { UnlockedKeyring, KeyringAuthenticator, SlotRewrapContext, WebAuthnEnrollment } from '../src/index.js'
+import type { UnlockedKeyring, KeyringAuthenticator, SlotRewrapContext } from '@noy-db/hub'
+import type { WebAuthnEnrollment } from '../src/index.js'
 
 // ─── Fixtures ────────────────────────────────────────────────────────────
 

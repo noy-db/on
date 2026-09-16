@@ -26,7 +26,7 @@ import {
   knownProviders,
   OidcTokenError,
 } from '../src/index.js'
-import type { UnlockedKeyring } from '../src/index.js'
+import type { UnlockedKeyring } from '@noy-db/hub'
 
 // ─── LINE LIFF ID-token fixture ───────────────────────────────────────────────
 //

@@ -48,6 +48,9 @@ async function makeTestKeyring(): Promise<UnlockedKeyring> {
     displayName: 'Alice',
     role: 'owner',
     permissions: { invoices: 'rw', clients: 'rw' },
+    // Required by `UnlockedKeyring`; empty is the honest value for a
+    // fixture that enrols no authenticator.
+    authenticators: [],
     deks: new Map([
       ['invoices', dek1],
       ['clients', dek2],

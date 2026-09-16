@@ -31,7 +31,8 @@ import {
   OidcTokenError,
   OidcDeviceSecretNotFoundError,
 } from '../src/index.js'
-import type { OidcEnrollment, OidcProviderConfig, UnlockedKeyring } from '../src/index.js'
+import type { UnlockedKeyring } from '@noy-db/hub'
+import type { OidcEnrollment, OidcProviderConfig } from '../src/index.js'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
