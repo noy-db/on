@@ -8,7 +8,8 @@
     "versions-uniform",
     "declared-deps",
     "codemod-rows",
-    "check-license"
+    "check-license",
+    "prose-examples"
   ],
   "localChecks": [
     "pnpm check:prose-examples"
