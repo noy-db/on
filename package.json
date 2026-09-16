@@ -8,8 +8,7 @@
     "lint": "pnpm -r lint",
     "test": "vitest run",
     "typecheck": "pnpm -r typecheck",
-    "version:set": "node scripts/version-set.mjs",
-    "check:prose-examples": "node scripts/check-prose-examples.mjs"
+    "version:set": "node scripts/version-set.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",

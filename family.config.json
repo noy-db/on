@@ -10,8 +10,5 @@
     "codemod-rows",
     "check-license",
     "prose-examples"
-  ],
-  "localChecks": [
-    "pnpm check:prose-examples"
   ]
 }
