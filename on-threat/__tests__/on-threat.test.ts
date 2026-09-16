@@ -106,3 +106,63 @@ describe('honeypot secret', () => {
     expect(await checkHoneypot('something else', digest, salt)).toBe(false)
   })
 })
+
+/**
+ * ⛔ CHARACTERIZATION, AND THE ANSWER TO noy-db/on#5's FIRST CASE.
+ *
+ * Every bound this package enforces lives in the caller-held `LockoutState`
+ * and is applied by MUTATING it, so an adversary holding a pristine copy is
+ * bound by none of them — the same mechanism as `on-pin` (noy-db/on#2).
+ *
+ * ⚠️ BUT THE VERDICT IS NOT THE SAME, and that is the point of #5. For
+ * `on-pin` the copy-holder already possesses the wrapped DEKs; reverting buys
+ * them a session they could largely reach anyway, and tier 3 is documented as
+ * a convenience. Here the state IS the enforcement mechanism, and the party
+ * who can revert it is exactly the adversary the package exists to resist.
+ * Reverting does not extend a convenience — it removes the control.
+ *
+ * ⭐ So these tests are NOT a demand for a trusted counter. `on-threat` is
+ * pure logic and cannot have one. They pin the boundary so the DOCUMENTED
+ * CUSTODY GUIDANCE cannot drift away from what the code can enforce, which is
+ * the half that was wrong: the interface doc used to say "caller stores this
+ * next to the keyring", i.e. exactly where the adversary is.
+ */
+describe('a pristine copy of LockoutState defeats every bound (#5)', () => {
+  const tripThreshold = { threshold: 2, maxStrikes: 2 }
+
+  it('reverting resets the failure counter, so brute-force lockout is undone', () => {
+    const state = initialLockoutState()
+    const captured = { ...state }
+
+    recordFailure(state, tripThreshold)
+    recordFailure(state, tripThreshold)
+    expect(isLocked(state)).toBe(true)
+
+    // The adversary restores their copy and the budget is back.
+    expect(captured.failures).toBe(0)
+    expect(isLocked(captured)).toBe(false)
+  })
+
+  it('reverting also undoes `strikes`, which recordSuccess deliberately preserves', () => {
+    // `recordSuccess` keeps strikes on purpose — "a successful unlock doesn't
+    // erase the history that the keyring was under attack". That history is
+    // only as durable as the storage the adversary controls.
+    const state = initialLockoutState()
+    const captured = { ...state }
+    recordFailure(state, tripThreshold)
+    recordFailure(state, tripThreshold)
+    recordSuccess(state)
+    expect(state.strikes).toBeGreaterThan(0)
+    expect(captured.strikes).toBe(0)
+  })
+
+  it('reverting clears the terminal `wiped` latch', () => {
+    // `wiped` "latches to true until explicitly reset". A copy is a reset.
+    const state = initialLockoutState()
+    const captured = { ...state }
+    for (let i = 0; i < 8; i++) recordFailure(state, { threshold: 1, maxStrikes: 1, cooldownMs: 0 })
+    expect(state.wiped).toBe(true)
+    expect(captured.wiped).toBe(false)
+  })
+})
+

@@ -46,8 +46,25 @@ export interface LockoutConfig {
 }
 
 /**
- * Persistent lockout state. Caller stores this next to the keyring and
- * passes it through every `recordAttempt` / `isLocked` call.
+ * Persistent lockout state, passed through every `recordFailure` /
+ * `isLocked` call.
+ *
+ * ⛔ **WHERE YOU STORE THIS DECIDES WHETHER LOCKOUT IS A CONTROL OR A
+ * DECORATION** (noy-db/on#5). Every bound here is enforced by MUTATING this
+ * object, so a party holding a pristine copy is bound by none of them:
+ * reverting resets `failures`, resets `strikes` — which `recordSuccess`
+ * deliberately preserves — and clears the terminal `wiped` latch. Pinned by
+ * `__tests__/on-threat.test.ts`.
+ *
+ * ⚠️ **This doc used to say "store this next to the keyring", which is exactly
+ * where the adversary is.** An attacker holding the device holds the vault and
+ * this blob together; they revert the file and brute-force is unbounded. If
+ * lockout must hold against that attacker, the state belongs somewhere they do
+ * not control — a server, an OS secure enclave, a TPM-backed store. Beside the
+ * keyring it bounds an honest user's mistakes and nothing else.
+ *
+ * ⭐ That is a real use, not a disclaimer: fat-finger protection and accidental
+ * repeated unlock attempts are the common case. Choose it knowingly.
  */
 export interface LockoutState {
   /** Count of failed attempts in the current window. */
