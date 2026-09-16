@@ -33,6 +33,23 @@
  *   - K colluding share holders (by design — that's the threshold contract)
  *   - Device compromise of the combining machine during reconstruction
  *
+ * ## ⛔ KEK ROTATION SILENTLY INVALIDATES EVERY OUTSTANDING SHARE
+ *
+ * Shamir splitting is information-theoretic, not wrapping: the shares ARE
+ * the KEK's bytes, split. Nothing here is encrypted under a second key, so
+ * there is no re-wrap path and no ceremony that can migrate a share set.
+ *
+ * When the vault's KEK rotates, existing shares do not fail loudly — they
+ * reconstruct the OLD KEK, which no longer opens the vault. **Nothing in
+ * this package detects that**, and the holder finds out at recovery time,
+ * which for a last-resort unlock path is the worst possible moment.
+ *
+ * The only remedy is redistribution: call `splitKEK(newKek)` and get the
+ * fresh shares to all N holders again. ⚠️ That is an OUT-OF-BAND,
+ * PEOPLE-SHAPED operation — holders are safes, printouts and other on-*
+ * methods — so it cannot be automated from here and must be part of
+ * whatever runbook owns your rotation.
+ *
  * ## Usage
  *
  * ```ts

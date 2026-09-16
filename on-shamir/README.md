@@ -47,6 +47,20 @@ pnpm add @noy-db/on-shamir
 - Device compromise of the combining machine during reconstruction (the KEK is briefly in memory; if that machine is malicious, no library-level hedge helps)
 - Side-channel attacks on the Lagrange interpolation (not constant-time by design — the threat model assumes a trusted combine-device)
 
+## ⛔ Rotating the KEK invalidates every outstanding share
+
+Splitting is information-theoretic, not wrapping — the shares **are** the KEK's
+bytes, split — so there is no re-wrap path and no ceremony that can migrate a
+share set. After a KEK rotation, existing shares still combine successfully and
+hand back the **old** KEK, which no longer opens the vault. Nothing here detects
+this; the holder discovers it at recovery time, which for a last-resort unlock
+path is the worst possible moment.
+
+The remedy is redistribution: `splitKEK(newKek)`, then get the fresh shares to
+all N holders again. ⚠️ Holders are safes, printouts and other `on-*` methods, so
+this is an out-of-band, people-shaped operation — put it in the runbook that
+owns your rotation, because this package cannot automate or detect it.
+
 ## Math
 
 Shamir Secret Sharing over GF(2^8), byte-wise. For each byte of the KEK:
