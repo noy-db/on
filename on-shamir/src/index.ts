@@ -40,9 +40,19 @@
  * there is no re-wrap path and no ceremony that can migrate a share set.
  *
  * When the vault's KEK rotates, existing shares do not fail loudly — they
- * reconstruct the OLD KEK, which no longer opens the vault. **Nothing in
- * this package detects that**, and the holder finds out at recovery time,
- * which for a last-resort unlock path is the worst possible moment.
+ * reconstruct the OLD KEK, which no longer opens the vault.
+ *
+ * ⛔ **A PARTIAL redistribution is WORSE THAN NONE.** A share carries
+ * `v/x/k/n/y` and nothing identifying which secret it splits, so mixing one
+ * generation's shares with another's is undetectable: the mix
+ * Lagrange-interpolates to well-formed bytes of the right length, and
+ * `combineKEK` imports them as a perfectly valid AES-GCM key. **Nothing
+ * throws.** The holder is handed a `CryptoKey` that decrypts nothing and
+ * fails arbitrarily later, looking like data corruption rather than a
+ * recovery mistake. ⚠️ The guard that reads as covering this — *"share
+ * lengths disagree — incompatible enrollment"* — fires only when the secret
+ * LENGTHS differ, so two 32-byte KEKs from different generations never trip
+ * it. Measured; pinned by `__tests__/kek-api.test.ts`.
  *
  * The only remedy is redistribution: call `splitKEK(newKek)` and get the
  * fresh shares to all N holders again. ⚠️ That is an OUT-OF-BAND,

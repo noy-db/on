@@ -52,9 +52,15 @@ pnpm add @noy-db/on-shamir
 Splitting is information-theoretic, not wrapping — the shares **are** the KEK's
 bytes, split — so there is no re-wrap path and no ceremony that can migrate a
 share set. After a KEK rotation, existing shares still combine successfully and
-hand back the **old** KEK, which no longer opens the vault. Nothing here detects
-this; the holder discovers it at recovery time, which for a last-resort unlock
-path is the worst possible moment.
+hand back the **old** KEK, which no longer opens the vault.
+
+⛔ **A partial redistribution is worse than none.** A share carries `v/x/k/n/y`
+and nothing identifying *which* secret it splits, so mixing generations is
+undetectable: the mix interpolates to well-formed bytes of the right length and
+`combineKEK` imports them as a valid AES-GCM key. **Nothing throws.** The holder
+gets a `CryptoKey` that decrypts nothing and fails arbitrarily later, looking
+like data corruption rather than a recovery mistake. Either redistribute to
+**all** N holders or to none.
 
 The remedy is redistribution: `splitKEK(newKek)`, then get the fresh shares to
 all N holders again. ⚠️ Holders are safes, printouts and other `on-*` methods, so
