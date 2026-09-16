@@ -12,6 +12,52 @@ repo does not have. See `scripts/version-set.mjs` for the mechanism that replace
 its tarball and therefore immutable once published, a mistake here can simply be corrected in
 place. Do not apply hub's correct-alongside-in-the-next-entry constraint to this file.
 
+## 0.8.0
+
+First stable release of the ten-package line under Apache-2.0, published 2026-09-13
+(`v0.8.0-pre.0..v0.8.0`). Everything in `0.8.0-pre.0` below ships here unchanged; the only
+source change across the two tags is the envelope-body guard described first.
+
+⚠️ **This is a BREAKING release for anyone already on `0.8.0-pre.0`** — not because of anything in
+this repo, but because promoting hub `0.8.0-pre.0` → `0.8.0` carries hub's `EncryptedEnvelope` →
+`Envelope` rename and the widening of `_iv`/`_data` to optional. `EncryptedEnvelope` survives as an
+alias for the whole 0.8 line, so the rename is additive; **the optionality is not.**
+
+### Fixed
+
+- **`on-magic-link` and `on-password` now guard the optional envelope body.** Hub `0.8.0` widens
+  `Envelope._data` to optional — an *exclave* capsule stores a plaintext row and writes no
+  ciphertext body — so the two places that read `_data` and hand it to `JSON.parse` had to say what
+  absence means. `readAuditDoc` treats a bodyless envelope as no audit doc and returns `undefined`;
+  `verifyPasswordSlot` treats a bodyless `_keyring` record as unreadable and throws
+  `PasswordInvalidError`, the domain error it already uses for every failure to obtain the keyring.
+  Hub documents absence and `''` as the same thing, so both guards are a plain falsy check.
+  ⛔ **Neither may become hub's `hasSealedBody`**, which tests `_iv`, not `_data`: `_keyring` and
+  `_meta` are unencrypted collections whose records carry plaintext JSON in `_data` with `_iv: ''`,
+  so it answers false for every valid record. The counter-argument is at both call sites.
+  ⚠️ No behaviour changes for an enclave capsule — the guards fire only where there was never a
+  body.
+
+### Changed
+
+- **Version only, for the other eight packages.** `0.8.0-pre.0 → 0.8.0` across all ten, with the
+  `@noy-db/hub` dev pin and `@noy-db/shamir`'s dependency moving in lockstep. Peer ranges are
+  **unchanged**: `^0.7.0 || ^0.7.1-pre.0 || ^0.8.0-pre.0` already admits `0.8.0`, and the floor
+  still compiles — verified by the peer-floor gate at `1453dc3`, seven packages typechecked against
+  the floor hub, the three that import hub nowhere skipped by name.
+- `@noy-db/on-shamir` is published **from this repo** for the first time. `0.7.0` under that name
+  was core-published, before the package moved here. Its `@noy-db/shamir` dependency — the family's
+  only cross-repo hard `dependency`, and deliberately not a peer — resolves at `^0.8.0-pre.0`.
+
+### Notes
+
+- **Nothing was deprecated by this release** beyond the family-wide `-pre` sweep the root ran at the
+  0.8.0 cut. `0.7.0` remains installable and MIT.
+- ⚠️ **This section was written on 2026-09-16, three days after the release**, because the rail's
+  CHANGELOG gate had no end anchor and `## 0.8.0-pre.0` satisfied its `0.8.0` check
+  (`noy-db/family#30`, gate fixed in `noy-db/.github#16`). It is reconstructed from the tag range,
+  not from memory.
+
 ## 0.8.0-pre.0
 
 Relicensed from MIT to Apache-2.0 from this version on. Earlier versions remain MIT.
