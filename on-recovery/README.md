@@ -178,4 +178,4 @@ PBKDF2 with 600K iterations takes ~500ms per derive on modern hardware. Generati
 
 ## License
 
-Apache-2.0
+Apache-2.0 © vLannaAi

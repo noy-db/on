@@ -211,4 +211,4 @@ GF(2^8) operations are table-lookup O(1) — all micro-operations run in nanosec
 
 ## License
 
-Apache-2.0
+Apache-2.0 © vLannaAi
