@@ -9,5 +9,8 @@
     "declared-deps",
     "codemod-rows",
     "check-license"
+  ],
+  "localChecks": [
+    "pnpm check:prose-examples"
   ]
 }
