@@ -169,9 +169,29 @@ export function isLocked(state: LockoutState, now: Date = new Date()): boolean {
 /**
  * Enroll a duress secret. Returns a `{ digest, salt }` pair to
  * persist alongside the keyring. On every unlock attempt the caller
- * runs `checkDuress(input, digest, salt)` BEFORE the normal PBKDF2
- * unlock — a match means the user entered the duress phrase, and the
- * caller should invoke the wipe handler.
+ * runs `checkDuress(input, digest, salt)` — a match means the user
+ * entered the duress phrase, and the caller should invoke the wipe
+ * handler.
+ *
+ * ⛔ **RUN EVERY CHECK UNCONDITIONALLY, THEN BRANCH. Do not short-circuit**
+ * (noy-db/on#5). This doc used to say "BEFORE the normal PBKDF2 unlock",
+ * which invites the obvious implementation — return early on a duress match —
+ * and that is a timing distinguisher in the flow this package recommends. A
+ * duress entry would cost one 200k-iteration hash; a real unlock costs the
+ * same hash plus the vault's own 600k derivation. Measured here, 200k is
+ * ~22ms, so the two paths differ by roughly 4x and an observer with a
+ * stopwatch learns which secret was typed — defeating the deniability this
+ * package exists to provide.
+ *
+ * ⚠️ Same trap with {@link checkHoneypot}: checking duress first and
+ * returning on a match makes a duress hit cost half what a honeypot hit
+ * costs. Await both, and the real unlock, before deciding what to do.
+ *
+ * ⭐ `checkDuress` ITSELF is timing-flat — PBKDF2 runs unconditionally and the
+ * comparison is constant-time, measured at match 22.0ms / miss 22.4ms /
+ * 1-char input 22.0ms, pinned in `__tests__/on-threat.test.ts`. The leak this
+ * warns about is in the CALLER'S control flow, which is why it is written
+ * here rather than fixed in code: this package cannot enforce it.
  *
  * **Why hash-compare rather than wrap-attempt?** The duress secret
  * is intentionally a distinct secret from the real unlock secret —

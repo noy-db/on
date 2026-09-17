@@ -166,3 +166,46 @@ describe('a pristine copy of LockoutState defeats every bound (#5)', () => {
   })
 })
 
+/**
+ * ⭐ THE HALF OF noy-db/on#5 THIS PACKAGE CAN OWN.
+ *
+ * `on-threat`'s stated goal is a plausible-deniability model, and the property
+ * that matters is that an observer cannot tell WHICH secret was entered. Most
+ * of that lives in the caller — this package only detects — but one part is
+ * squarely here: `checkDuress` must take the same time whether it matches,
+ * misses, or is handed a one-character input.
+ *
+ * Measured 2026-09-17: match 22.0ms, miss 22.4ms, 1-char miss 22.0ms. It holds
+ * because PBKDF2-SHA256 at 200k iterations dominates and runs unconditionally,
+ * and the comparison is `constantTimeEqual`.
+ *
+ * ⚠️ THE BOUND IS DELIBERATELY LOOSE (3x), and that is not laziness. A tight
+ * bound turns runner noise into a flaky gate, which gets muted, which is worse
+ * than no test. The regression actually worth catching is CATASTROPHIC, not
+ * marginal: an early return placed BEFORE the KDF — a length pre-check, a
+ * cheap `!==` guard — collapses one path to ~0ms and blows a 3x bound by an
+ * order of magnitude. Marginal timing analysis is not what this test is for.
+ */
+describe('checkDuress does not leak the match by timing (#5)', () => {
+  it('takes comparable time to match, to miss, and to reject a 1-char input', async () => {
+    const { digest, salt } = await enrollDuress('the-duress-phrase')
+    const time = async (input: string, n = 6): Promise<number> => {
+      const t0 = performance.now()
+      for (let i = 0; i < n; i++) await checkDuress(input, digest, salt)
+      return (performance.now() - t0) / n
+    }
+
+    await time('warmup', 2)
+    const match = await time('the-duress-phrase')
+    const miss = await time('some-other-phrase')
+    const shortMiss = await time('x')
+
+    // A path that skipped the KDF would be ~0ms and fail these by 10x or more.
+    expect(match).toBeGreaterThan(0)
+    expect(miss / match).toBeLessThan(3)
+    expect(match / miss).toBeLessThan(3)
+    expect(shortMiss / match).toBeLessThan(3)
+    expect(match / shortMiss).toBeLessThan(3)
+  }, 60_000)
+})
+
