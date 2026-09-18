@@ -54,6 +54,22 @@
  *     re-checks the token after unlock. Mid-session expiry never tears down
  *     the session — only the NEXT connector call needs a fresh token.
  *
+ * ⚠️ A DEK ROTATION INVALIDATES AN ENROLLMENT, AND THAT IS THE REVOCATION
+ * ─────────────────────────────────────────────────────────────────────────
+ * An enrollment caches the vault's DEK set, wrapped under the reconstructed
+ * KEK fragment — this package writes no keyring slot, so hub's `rotateSecret`
+ * knows nothing about it and cannot re-enroll it through a
+ * `SlotRewrapCeremony`. After the vault rotates its DEKs the cached set is
+ * stale: it still unwraps, and then fails AES-GCM authentication against any
+ * newly written record.
+ *
+ * ⭐ **That is the intended behaviour, not a gap** — it is the same property
+ * `on-pin`'s device-trust relies on, and it is what makes rotation an
+ * effective revocation for a device whose `revokeOidcDevice()` call never
+ * reached the connector. ⛔ **So do not "fix" it with a rewrap path**: keeping
+ * an enrollment alive across a rotation would remove the only revocation that
+ * does not depend on the server being reachable.
+ *
  * Multi-device enrollment — firm re-invite ONLY
  * ─────────────────────────────────────────────
  * deviceHalf is partition-local by design (LINE in-app WebView, external
