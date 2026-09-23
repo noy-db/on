@@ -33,6 +33,7 @@ import {
   type NoydbStore,
   type EncryptedEnvelope,
   type Role,
+  type Permissions,
   type FactorProof,
   type SecretPolicy,
   NOYDB_FORMAT_VERSION,
@@ -119,6 +120,30 @@ export interface IssueInviteOptions {
   readonly tempPhrase?: string
   /** Attached to the payload verbatim; never read here. See {@link InviteTransport}. */
   readonly transport?: InviteTransport
+  /**
+   * Per-collection access map, forwarded verbatim to `db.grant`. Omitted, the
+   * grant applies hub's role-based defaults — which for an `operator` or
+   * `client` invite mints a keyring with no collection keys, so the invitee's
+   * first read is a `NoAccessError` naming a `permissions` option the invite
+   * had no way to express (core#86, on#13).
+   *
+   * ⭐ **Applied ISSUER-side, at grant time.** It is deliberately NOT on
+   * {@link InvitePayload}: that is base64url in a URL fragment and is the
+   * recipient's half, and `acceptInvite` never reads permissions. Putting a
+   * member's access map in a link would publish it for no functional gain.
+   * ⚠️ {@link InviteTransport} sits on the payload because it genuinely is for
+   * the recipient — not a pattern to copy here.
+   *
+   * ⛔ **Naming a collection that does not exist yet is CORRECT, not an error
+   * to guard against.** The DEK is minted by name and the collection binds it
+   * on creation, so `{ later: 'rw' }` resolves the moment the owner creates
+   * `later` — which is the order a real invite runs in: provision the member,
+   * then land the data. The guard that matters is hub's and already fires:
+   * minting is gated on the collection being EMPTY, so a collection holding
+   * records the grantor cannot read throws `PrivilegeEscalationError`.
+   * **Not-yet-exists resolves; cannot-read refuses.**
+   */
+  readonly permissions?: Permissions
 }
 
 export interface IssuePeerRecoveryOptions {
@@ -286,6 +311,7 @@ export async function issueInvite(
     displayName: options.displayName,
     role: options.role,
     secret: tempPhrase,
+    ...(options.permissions !== undefined && { permissions: options.permissions }),
     // Allow weak temp phrase — random-generated phrases are
     // high-entropy but may not satisfy the human-typeable rules
     // (lowercase + spaces + min words). The recipient's chosen
