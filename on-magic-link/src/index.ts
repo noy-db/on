@@ -496,6 +496,7 @@ export {
 export type {
   InviteKind,
   InvitePayload,
+  InviteTransport,
   InviteAuditDoc,
   IssueInviteOptions,
   IssuePeerRecoveryOptions,

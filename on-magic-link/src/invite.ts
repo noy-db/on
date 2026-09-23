@@ -44,6 +44,31 @@ const INVITE_DEFAULT_TTL_MS = 24 * 60 * 60 * 1000
 
 // ─── Types ─────────────────────────────────────────────────────────────
 
+/**
+ * **Where the live store is** — an opaque locator the issuer may attach so one
+ * link (or QR) both onboards a member and connects them to the store, instead of
+ * the app asking a member to type a relay address (on#10).
+ *
+ * `kind` discriminates the transport; every other field belongs to that kind
+ * (`{ kind: 'by-peer-relay', url, room, token }`, a daemon address, a cloud
+ * handle — new kinds are added by the caller, not by this package).
+ *
+ * ⛔ **This package neither reads nor validates it.** `acceptInvite` ignores the
+ * field entirely; the application reads it to build the store BEFORE accepting.
+ * So it is not a capability this layer grants, and **any credential inside it
+ * expires on the transport's own schedule, not on the invite's** — `on` cannot
+ * expire what it never minted. An issuer putting a long-lived room token here
+ * has widened the link's blast radius past `expiresAt`, and only they can
+ * narrow it again.
+ *
+ * ⚠️ It rides the same URL fragment as `tempPhrase`: server-blind, but visible
+ * to anyone who sees the URL.
+ */
+export interface InviteTransport {
+  readonly kind: string
+  readonly [field: string]: unknown
+}
+
 /** Whether the payload mints a NEW user (invite) or rewraps an existing one (peer-recovery). */
 export type InviteKind = 'invite' | 'peer-recovery'
 
@@ -65,6 +90,11 @@ export interface InvitePayload {
   /** Single-use temporary secret — replaced on `acceptInvite`. */
   readonly tempPhrase: string
   readonly expiresAt: string
+  /**
+   * Optional transport locator — opaque to the accept step, forwarded verbatim
+   * from `issueInvite` / `issuePeerRecovery`. See {@link InviteTransport}.
+   */
+  readonly transport?: InviteTransport
 }
 
 /** Audit doc persisted at `_meta/invite-audit-<tokenId>`. */
@@ -87,6 +117,8 @@ export interface IssueInviteOptions {
   readonly ttlMs?: number
   /** Override the generated temp phrase (rare; deterministic tests). */
   readonly tempPhrase?: string
+  /** Attached to the payload verbatim; never read here. See {@link InviteTransport}. */
+  readonly transport?: InviteTransport
 }
 
 export interface IssuePeerRecoveryOptions {
@@ -95,6 +127,8 @@ export interface IssuePeerRecoveryOptions {
   readonly role?: Role
   readonly ttlMs?: number
   readonly tempPhrase?: string
+  /** Attached to the payload verbatim; never read here. See {@link InviteTransport}. */
+  readonly transport?: InviteTransport
 }
 
 export interface IssueInviteResult {
@@ -159,6 +193,12 @@ export interface AcceptInviteOptions {
 }
 
 export interface AcceptInviteResult {
+  /**
+   * The recipient's live session, open under `newPhrase`.
+   *
+   * ⚠️ **It holds ZERO authenticator slots** — see {@link acceptInvite}'s note on
+   * the slot state before calling anything factor-gated on it.
+   */
   readonly db: Noydb
   readonly payload: InvitePayload
 }
@@ -263,6 +303,7 @@ export async function issueInvite(
     issuer,
     tempPhrase,
     expiresAt,
+    ...(options.transport !== undefined && { transport: options.transport }),
   }
 
   await writeAuditDoc(getStore(db), vault, {
@@ -322,6 +363,7 @@ export async function issuePeerRecovery(
     issuer,
     tempPhrase,
     expiresAt,
+    ...(options.transport !== undefined && { transport: options.transport }),
   }
 
   await writeAuditDoc(getStore(db), vault, {
@@ -391,6 +433,35 @@ export async function revokeInvite(
  *   2. The audit doc's `acceptedAt` field is set on success — a
  *      second `acceptInvite` call sees it and throws
  *      `InviteAlreadyAcceptedError`.
+ *
+ * ## The accepted member has ZERO authenticator slots
+ *
+ * ⭐ **Accept itself needs no factor** — the rotation below calls the team-level
+ * `keyringRotateSecret` deliberately, not the policy-gated `db.team.rotateSecret`,
+ * so *open with the temp secret → rotate* is TRUE for this call, for a fresh
+ * invite and for a re-granted or peer-recovered member alike.
+ *
+ * ⛔ **What is NOT true is the state it leaves behind.** The returned session's
+ * keyring carries `authenticators: []` — `grant` and `recoverUser` mint no slot,
+ * and nothing here enrols one. So the NEXT factor-gated operation the member
+ * attempts fails, measured on published `@noy-db/hub@0.8.0`:
+ *
+ * ```text
+ * db.team.rotateSecret(vault, …)
+ *   → PolicyDeniedError POLICY_DENIED
+ *     Gate "rotate-secret" denied: missing-factor.
+ * ```
+ *
+ * A member who must rotate again — the common first-day-on-a-new-device case —
+ * therefore does four steps, not two: **open with the temp secret → enrol a slot
+ * → prove it → rotate.** ⚠️ State it as the slot count, not as that recipe:
+ * `rotate-secret` is one gate among several, so any verb the vault's policy gates
+ * is equally unreachable until a slot exists, and the recipe silently narrows to
+ * whichever gate a reader happens to have hit.
+ *
+ * Enrolling is the caller's, not this package's: only the application knows which
+ * authenticator the member actually has (`on-password`, `on-webauthn`, …), and
+ * guessing one here would mint a factor the member cannot prove. (on#11)
  *
  * @throws {@link InviteExpiredError} when TTL has passed.
  * @throws {@link InviteRevokedError} when the issuer has revoked.
