@@ -149,3 +149,68 @@ describe('the accepted member has zero authenticator slots (on#11)', () => {
     expect(keyring.authenticators).toEqual([])
   }, 180_000)
 })
+
+describe('issueInvite permissions (on#13)', () => {
+  it('forwards a per-collection map to the grant; the invitee can read what it names', async () => {
+    const store = inlineMemory()
+    const alice = await owner(store)
+    await (await alice.openVault('acme')).collection('notes').put('n1', { text: 'visible' })
+
+    const { encoded } = await issueInvite(alice, 'acme', {
+      userId: 'bob',
+      displayName: 'Bob',
+      role: 'operator',
+      permissions: { notes: 'rw' },
+    })
+    const { db: bob } = await acceptInvite(encoded, {
+      store,
+      newPhrase: BOB_NEW_PHRASE,
+      noydbOptions: { teamStrategy: withTeam() },
+    })
+
+    const keyring = await bob.team.getKeyring('acme')
+    expect([...keyring.deks.keys()]).toContain('notes')
+    const bobsNotes = (await bob.openVault('acme')).collection<{ text: string }>('notes')
+    expect(await bobsNotes.get('n1')).toMatchObject({ text: 'visible' })
+  }, 180_000)
+
+  it('a collection that does not exist yet is granted by name and resolves on creation', async () => {
+    // ⛔ Not a validation gap — this is the order a real invite runs in:
+    // provision the member, then land the data. Refusing unknown names would
+    // break it. (Hub's own guard is elsewhere: minting is gated on the
+    // collection being empty, so cannot-read still refuses.)
+    const store = inlineMemory()
+    const alice = await owner(store)
+
+    const { encoded } = await issueInvite(alice, 'acme', {
+      userId: 'bob',
+      displayName: 'Bob',
+      role: 'operator',
+      permissions: { later: 'rw' },
+    })
+    const { db: bob } = await acceptInvite(encoded, {
+      store,
+      newPhrase: BOB_NEW_PHRASE,
+      noydbOptions: { teamStrategy: withTeam() },
+    })
+    expect([...(await bob.team.getKeyring('acme')).deks.keys()]).toContain('later')
+
+    await (await alice.openVault('acme')).collection('later').put('l1', { text: 'landed after the invite' })
+    const bobsLater = (await bob.openVault('acme')).collection<{ text: string }>('later')
+    expect(await bobsLater.get('l1')).toMatchObject({ text: 'landed after the invite' })
+  }, 180_000)
+
+  it('omitting it leaves the grant on role-based defaults, and never reaches the payload', async () => {
+    const store = inlineMemory()
+    const alice = await owner(store)
+    const { payload } = await issueInvite(alice, 'acme', {
+      userId: 'bob',
+      displayName: 'Bob',
+      role: 'admin',
+      permissions: { notes: 'rw' },
+    })
+    // Issuer-side only: the fragment must not carry the member's access map.
+    expect('permissions' in payload).toBe(false)
+    expect(JSON.stringify(payload)).not.toContain('notes')
+  }, 180_000)
+})
