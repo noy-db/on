@@ -4,9 +4,10 @@
 // Bindings the illustrative blocks below elide — the reader's own storage and
 // store choice. Typed on purpose: an `any` here would stop the blocks below
 // checking anything.
-import type { NoydbStore } from '@noy-db/hub'
+import type { NoydbStore, UnlockedKeyring } from '@noy-db/hub'
 import type { WebAuthnEnrollment } from '@noy-db/on-webauthn'
 declare const store: NoydbStore
+declare const keyring: UnlockedKeyring
 declare function loadEnrollmentFromIDB(): Promise<WebAuthnEnrollment>
 -->
 
@@ -48,6 +49,47 @@ The callback is invoked lazily on the first `openVault(name)` per vault and the 
 **Note:** `unlockWebAuthn` is back-compatible with existing non-PRF enrollments (created before this version or via explicit `allowNonPrfInsecure: true`); unlocking such records works normally, but the confidentiality guarantee depends on the enrollment's `prfUsed` flag. New enrollments require PRF or explicit opt-in for documented non-zero-knowledge presence gates.
 
 For first-time bootstrap (no enrollment exists yet), open the vault with a secret, enroll WebAuthn from the unlocked keyring (`enrollWebAuthn(keyring, ...)`), persist the enrollment, then swap to `getKeyring` on subsequent sessions.
+
+## One credential across subdomains — the RP ID
+
+A WebAuthn credential belongs to a **relying party ID**, and the browser
+defaults that to the page's own hostname. Enrol on `app.example.com` and the
+credential is invisible to `console.example.com`. To share one tap across
+subdomains, enrol under the **registrable domain**:
+
+```ts
+import { enrollWebAuthn, unlockWebAuthn } from '@noy-db/on-webauthn'
+
+// Enrol once, under the parent domain — valid from any of its subdomains.
+const enrollment = await enrollWebAuthn(keyring, 'company-a', {
+  rp: { id: 'example.com', name: 'Example' },
+})
+
+// The RP ID is recorded on the enrollment, so the assertion reuses it.
+// No second place to keep in sync.
+const unlocked = await unlockWebAuthn(enrollment)
+```
+
+The RP ID must be a registrable suffix of the enrolling page's origin: from
+`app.example.com` you may pass `example.com`, but not `example.org` and not
+`com`. The browser rejects anything else with a `SecurityError`.
+
+⚠️ **Records enrolled before `0.9.0` carry no `rpId`**, and for those the
+assertion sends none — preserving the old behaviour, where the browser
+defaults it to the asserting page. That is correct for a single-hostname
+deployment and wrong for a cross-subdomain one, so pass it explicitly when
+upgrading such a record:
+
+```ts
+import { unlockWebAuthn } from '@noy-db/on-webauthn'
+
+const legacy = await loadEnrollmentFromIDB()
+const unlocked = await unlockWebAuthn(legacy, { rpId: 'example.com' })
+```
+
+The same `rpId` option is accepted by `webAuthnSlotRewrapCeremony`, whose slot
+`meta` is written by hub and does not carry an RP ID today — so for the
+ceremony path the option is currently the only route.
 
 ## Status
 

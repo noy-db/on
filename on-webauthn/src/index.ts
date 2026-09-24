@@ -176,6 +176,21 @@ export interface WebAuthnEnrollment {
   readonly wrapIv: string
   /** ISO timestamp of enrollment. */
   readonly enrolledAt: string
+  /**
+   * The RP ID this credential was created under.
+   *
+   * ⚠️ OPTIONAL, and absence is not a default — records written before
+   * 0.9.0 do not carry it, and for those `unlockWebAuthn` sends no `rpId`,
+   * leaving the browser to default it to the asserting page's hostname.
+   * That is the old behaviour, preserved deliberately: a record enrolled
+   * on `app.example.com` must keep unlocking there.
+   *
+   * When present it is sent back as `publicKey.rpId` at assertion time, so
+   * enrolment and assertion cannot disagree — which is the whole point:
+   * enrol under the registrable domain (`rp: { id: 'example.com' }`) and
+   * every subdomain asserts against the same credential.
+   */
+  readonly rpId?: string
 }
 
 /** Options for `enrollWebAuthn()`. */
@@ -218,6 +233,15 @@ export interface WebAuthnEnrollOptions {
 export interface WebAuthnUnlockOptions {
   /** WebAuthn timeout in milliseconds. Default: 60_000. */
   timeout?: number
+  /**
+   * RP ID to assert against. Overrides the one recorded at enrolment.
+   *
+   * Needed when the record predates `WebAuthnEnrollment.rpId`, or when the
+   * slot's `meta` carries none — without it the browser defaults the RP ID
+   * to the asserting page's hostname, so a credential enrolled under
+   * `example.com` is invisible to `app.example.com`.
+   */
+  rpId?: string
   /**
    * Only consulted by `webAuthnSlotRewrapCeremony()` — `unlockWebAuthn()`
    * ignores it, since unlocking an existing non-PRF record is always
@@ -531,6 +555,7 @@ export async function enrollWebAuthn(
     wrappedPayload,
     wrapIv,
     enrolledAt: new Date().toISOString(),
+    rpId,
   }
 }
 
@@ -567,6 +592,9 @@ export async function unlockWebAuthn(
 
   const timeout = options.timeout ?? 60_000
   const credentialId = base64ToBuffer(enrollment.credentialId)
+  // Omitted, not defaulted: sending `rpId: undefined` is not the same as
+  // sending nothing, and an old record has no RP ID to send.
+  const rpId = options.rpId ?? enrollment.rpId
 
   const extensionsInput = (enrollment.prfUsed
     ? { prf: { eval: { first: PRF_SALT } } }
@@ -580,6 +608,7 @@ export async function unlockWebAuthn(
       userVerification: 'required',
       extensions: extensionsInput,
       timeout,
+      ...(rpId !== undefined ? { rpId } : {}),
     },
   }) as PublicKeyCredential | null
 
@@ -727,6 +756,7 @@ export async function webAuthnSlotRewrapCeremony(
     prfUsed?: unknown
     beFlag?: unknown
     requireSingleDevice?: unknown
+    rpId?: unknown
   }
   if (typeof meta.credentialId !== 'string' || meta.credentialId.length === 0) {
     throw new ValidationError(
@@ -749,6 +779,10 @@ export async function webAuthnSlotRewrapCeremony(
   // 1. Trigger the assertion. Same path `unlockWebAuthn` uses.
   const credentialIdBuf = base64ToBuffer(meta.credentialId)
   const timeout = options.timeout ?? 60_000
+  // `meta` is written by hub's `db.enrollWebAuthn`, not by this package, so
+  // an RP ID may simply not be there. Read it defensively and let the
+  // caller override — same omit-don't-default rule as `unlockWebAuthn`.
+  const rpId = options.rpId ?? (typeof meta.rpId === 'string' && meta.rpId.length > 0 ? meta.rpId : undefined)
   const extensionsInput = (prfUsed
     ? { prf: { eval: { first: PRF_SALT } } }
     : {}
@@ -761,6 +795,7 @@ export async function webAuthnSlotRewrapCeremony(
       userVerification: 'required',
       extensions: extensionsInput,
       timeout,
+      ...(rpId !== undefined ? { rpId } : {}),
     },
   }) as PublicKeyCredential | null
 
