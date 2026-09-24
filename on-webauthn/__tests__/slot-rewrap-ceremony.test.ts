@@ -157,6 +157,64 @@ function slotFromEnrollment(enrollment: WebAuthnEnrollment): KeyringAuthenticato
   }
 }
 
+// ─── RP ID (noy-db/on#15) ────────────────────────────────────────────────
+
+describe('webAuthnSlotRewrapCeremony — RP ID', () => {
+  /** Enrol, then hand back the slot plus a re-stubbed `credentials` mock. */
+  async function enrolledSlot(): Promise<{ slot: KeyringAuthenticator; rawId: ArrayBuffer }> {
+    const rawId = new Uint8Array(16).fill(0xcd).buffer
+    const keyring = await makeKeyring(new Map([['invoices', await makeDek()]]))
+    stubWebAuthn({ createReturn: mockCreateCredential({ rawId, prfOutput: FIXED_PRF_OUTPUT }) })
+    const slot = slotFromEnrollment(await enrollWebAuthn(keyring, 'acme', {
+      rp: { id: 'example.com', name: 'Example' },
+    }))
+    vi.unstubAllGlobals()
+    return { slot, rawId }
+  }
+
+  function ctxFor(slot: KeyringAuthenticator): SlotRewrapContext {
+    return {
+      newKek: new Uint8Array(32) as unknown as CryptoKey,
+      newDeks: new Map(),
+      oldSlot: slot,
+    }
+  }
+
+  it('asserts under meta.rpId when the slot carries one', async () => {
+    const { slot, rawId } = await enrolledSlot()
+    // ⚠️ Set explicitly, NOT via `slotFromEnrollment`: hub's
+    // `db.enrollWebAuthn` does not write `rpId` into meta today, and the
+    // fixture must keep mirroring what hub actually writes.
+    const withRpId = { ...slot, meta: { ...(slot.meta as object), rpId: 'example.com' } }
+
+    const creds = stubWebAuthn({ getReturn: mockGetCredential({ rawId, prfOutput: FIXED_PRF_OUTPUT }) })
+    await webAuthnSlotRewrapCeremony(ctxFor(withRpId as KeyringAuthenticator))
+
+    const asserted = creds.get.mock.calls[0]![0] as CredentialRequestOptions
+    expect(asserted.publicKey!.rpId).toBe('example.com')
+  })
+
+  it('omits rpId when the slot carries none — what hub writes today', async () => {
+    const { slot, rawId } = await enrolledSlot()
+
+    const creds = stubWebAuthn({ getReturn: mockGetCredential({ rawId, prfOutput: FIXED_PRF_OUTPUT }) })
+    await webAuthnSlotRewrapCeremony(ctxFor(slot))
+
+    const asserted = creds.get.mock.calls[0]![0] as CredentialRequestOptions
+    expect('rpId' in asserted.publicKey!).toBe(false)
+  })
+
+  it('lets options.rpId override the slot — the only route while hub writes none', async () => {
+    const { slot, rawId } = await enrolledSlot()
+
+    const creds = stubWebAuthn({ getReturn: mockGetCredential({ rawId, prfOutput: FIXED_PRF_OUTPUT }) })
+    await webAuthnSlotRewrapCeremony(ctxFor(slot), { rpId: 'example.com' })
+
+    const asserted = creds.get.mock.calls[0]![0] as CredentialRequestOptions
+    expect(asserted.publicKey!.rpId).toBe('example.com')
+  })
+})
+
 // ─── Round-trip ──────────────────────────────────────────────────────────
 
 describe('webAuthnSlotRewrapCeremony — end-to-end (PRF path)', () => {

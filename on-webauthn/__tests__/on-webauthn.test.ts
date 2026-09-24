@@ -183,6 +183,75 @@ describe('isValidEnrollment', () => {
   })
 })
 
+// ─── RP ID: enrolment and assertion must agree ─────────────────────────────
+
+/**
+ * The defect this pins (noy-db/on#15): enrolment sent `rp.id`, the assertion
+ * sent no `rpId` at all, and the browser silently defaulted it to the
+ * asserting page's hostname. Two sites disagreed and nothing noticed — so the
+ * assertions here compare the two CALLS, never a constant.
+ */
+describe('RP ID agreement', () => {
+  it('asserts under the RP ID the credential was enrolled with', async () => {
+    const creds = stubWebAuthn()
+    const keyring = await makeKeyring()
+
+    const enrollment = await enrollWebAuthn(keyring, 'company-a', {
+      rp: { id: 'example.com', name: 'Example' },
+    })
+    await unlockWebAuthn(enrollment)
+
+    const created = creds.create.mock.calls[0]![0] as CredentialCreationOptions
+    const asserted = creds.get.mock.calls[0]![0] as CredentialRequestOptions
+    const enrolledRpId = created.publicKey!.rp.id
+
+    expect(enrolledRpId).toBe('example.com')
+    expect(asserted.publicKey!.rpId).toBe(enrolledRpId)
+  })
+
+  it('records the RP ID on the enrollment so the two cannot drift', async () => {
+    stubWebAuthn()
+    const keyring = await makeKeyring()
+
+    const enrollment = await enrollWebAuthn(keyring, 'company-a', {
+      rp: { id: 'example.com', name: 'Example' },
+    })
+
+    expect(enrollment.rpId).toBe('example.com')
+  })
+
+  it('lets options.rpId override a record that carries none', async () => {
+    const creds = stubWebAuthn()
+    const keyring = await makeKeyring()
+
+    const enrollment = await enrollWebAuthn(keyring, 'company-a', {
+      rp: { id: 'example.com', name: 'Example' },
+    })
+    // A pre-0.9.0 record: enrolled before `rpId` was persisted.
+    const { rpId: _dropped, ...legacy } = enrollment
+    await unlockWebAuthn(legacy as WebAuthnEnrollment, { rpId: 'other.example.com' })
+
+    const asserted = creds.get.mock.calls[0]![0] as CredentialRequestOptions
+    expect(asserted.publicKey!.rpId).toBe('other.example.com')
+  })
+
+  it('OMITS rpId for a record that carries none — the pre-0.9.0 behaviour', async () => {
+    const creds = stubWebAuthn()
+    const keyring = await makeKeyring()
+
+    const enrollment = await enrollWebAuthn(keyring, 'company-a', {
+      rp: { id: 'example.com', name: 'Example' },
+    })
+    const { rpId: _dropped, ...legacy } = enrollment
+    await unlockWebAuthn(legacy as WebAuthnEnrollment)
+
+    const asserted = creds.get.mock.calls[0]![0] as CredentialRequestOptions
+    // Not `toBeUndefined()`: the key must be ABSENT, so the browser applies
+    // its own default. A present-but-undefined key is a different request.
+    expect('rpId' in asserted.publicKey!).toBe(false)
+  })
+})
+
 // ─── enrollWebAuthn ────────────────────────────────────────────────────────
 
 describe('enrollWebAuthn', () => {
