@@ -30,7 +30,7 @@ import {
   WebAuthnPRFUnavailableError,
 } from '../src/index.js'
 import { ValidationError } from '@noy-db/hub'
-import { runCeremonyConformanceTests } from '@noy-db/test-ceremony-conformance'
+import { runCeremonyConformanceTests } from '@noy-db/ports/on'
 import type { UnlockedKeyring, KeyringAuthenticator, SlotRewrapContext } from '@noy-db/hub'
 import type { WebAuthnEnrollment } from '../src/index.js'
 

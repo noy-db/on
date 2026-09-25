@@ -5,7 +5,7 @@
  * rules, the legacy wrap-KEK refusal, the salt round-trip. This runs the half
  * every method shares, so a third-party ceremony answers the same questions.
  */
-import { runCeremonyConformanceTests } from '@noy-db/test-ceremony-conformance'
+import { runCeremonyConformanceTests } from '@noy-db/ports/on'
 import type { KeyringAuthenticator, UnlockedKeyring, EnrollAuthenticatorOptions } from '@noy-db/hub'
 import {
   enrollPasswordAuthenticator,
