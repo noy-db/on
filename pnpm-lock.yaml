@@ -42,8 +42,8 @@ importers:
   on-magic-link:
     devDependencies:
       '@noy-db/hub':
-        specifier: 0.8.0
-        version: 0.8.0
+        specifier: 0.9.0-pre.1
+        version: 0.9.0-pre.1
       happy-dom:
         specifier: ^18.0.0
         version: 18.0.1
@@ -51,8 +51,8 @@ importers:
   on-oidc:
     devDependencies:
       '@noy-db/hub':
-        specifier: 0.8.0
-        version: 0.8.0
+        specifier: 0.9.0-pre.1
+        version: 0.9.0-pre.1
       happy-dom:
         specifier: ^18.0.0
         version: 18.0.1
@@ -60,11 +60,11 @@ importers:
   on-password:
     devDependencies:
       '@noy-db/hub':
-        specifier: 0.8.0
-        version: 0.8.0
-      '@noy-db/test-ceremony-conformance':
-        specifier: 0.8.0
-        version: 0.8.0(@noy-db/hub@0.8.0)(vitest@3.2.7(@types/node@22.20.1)(happy-dom@18.0.1))
+        specifier: 0.9.0-pre.1
+        version: 0.9.0-pre.1
+      '@noy-db/ports':
+        specifier: 0.9.0-pre.1
+        version: 0.9.0-pre.1(@noy-db/hub@0.9.0-pre.1)(vitest@3.2.7(@types/node@22.20.1)(happy-dom@18.0.1))
       happy-dom:
         specifier: ^18.0.0
         version: 18.0.1
@@ -72,8 +72,8 @@ importers:
   on-pin:
     devDependencies:
       '@noy-db/hub':
-        specifier: 0.8.0
-        version: 0.8.0
+        specifier: 0.9.0-pre.1
+        version: 0.9.0-pre.1
       happy-dom:
         specifier: ^18.0.0
         version: 18.0.1
@@ -81,8 +81,8 @@ importers:
   on-recovery:
     devDependencies:
       '@noy-db/hub':
-        specifier: 0.8.0
-        version: 0.8.0
+        specifier: 0.9.0-pre.1
+        version: 0.9.0-pre.1
       happy-dom:
         specifier: ^18.0.0
         version: 18.0.1
@@ -94,8 +94,8 @@ importers:
         version: 0.8.0-pre.0
     devDependencies:
       '@noy-db/hub':
-        specifier: 0.8.0
-        version: 0.8.0
+        specifier: 0.9.0-pre.1
+        version: 0.9.0-pre.1
 
   on-threat:
     devDependencies:
@@ -112,11 +112,11 @@ importers:
   on-webauthn:
     devDependencies:
       '@noy-db/hub':
-        specifier: 0.8.0
-        version: 0.8.0
-      '@noy-db/test-ceremony-conformance':
-        specifier: 0.8.0
-        version: 0.8.0(@noy-db/hub@0.8.0)(vitest@3.2.7(@types/node@22.20.1)(happy-dom@18.0.1))
+        specifier: 0.9.0-pre.1
+        version: 0.9.0-pre.1
+      '@noy-db/ports':
+        specifier: 0.9.0-pre.1
+        version: 0.9.0-pre.1(@noy-db/hub@0.9.0-pre.1)(vitest@3.2.7(@types/node@22.20.1)(happy-dom@18.0.1))
       happy-dom:
         specifier: ^18.0.0
         version: 18.0.1
@@ -512,8 +512,8 @@ packages:
     cpu: [x64]
     os: [linux]
 
-  '@noy-db/hub@0.8.0':
-    resolution: {integrity: sha512-g4KjaZ4k2E44CZxmhyyVIIRn6sTGp/WZ/a+NTVD6OCpnK+2f2t8+tV4tEtkdzJ7bw9aej1jpxFocEaZuIpT8nQ==}
+  '@noy-db/hub@0.9.0-pre.1':
+    resolution: {integrity: sha512-yWuN6x4vZX0KwKa4OsxMpfUppsDgkh7f1TIgzffmhMZw4DKvuAN1uESBnOIkFkTCG2d5qkT22OrSiM79wJ/VRg==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
       zod: ^3.0.0 || ^4.0.0
@@ -524,16 +524,16 @@ packages:
       zod-to-json-schema:
         optional: true
 
+  '@noy-db/ports@0.9.0-pre.1':
+    resolution: {integrity: sha512-3XdE626g8FeoW8rI/BcEUc2SxqJHNbMiE/qUIBBoI52Y7HP7D6Uc0E+d0s8XR7+IJdNCwPIMc2AsWy/AWqPAFA==}
+    engines: {node: '>=22.0.0'}
+    peerDependencies:
+      '@noy-db/hub': ^0.9.0-pre.1
+      vitest: ^3.0.0
+
   '@noy-db/shamir@0.8.0-pre.0':
     resolution: {integrity: sha512-8lKn52DKupUDK8SJCp10UXwJNjsJb/Ch5hb9+wiNsEOH1p7EQNQgxtxqPlE0yOzHjAaldmbBaGsz4vm4c9okWQ==}
     engines: {node: '>=22.0.0'}
-
-  '@noy-db/test-ceremony-conformance@0.8.0':
-    resolution: {integrity: sha512-oDz8wqo7oA3mCV71tUYH1uEkYtUV8UcYndnRqzc9ByCIpq49ivXoGVBfuIOZNrDhf8oqWw8hEBWcIl9wTKQ0pA==}
-    engines: {node: '>=22.0.0'}
-    peerDependencies:
-      '@noy-db/hub': ^0.8.0
-      vitest: ^3.0.0
 
   '@rollup/rollup-android-arm-eabi@4.63.1':
     resolution: {integrity: sha512-UZ8sUxPTiHWYX9QNdJedb1kDZSpS1t/VPWBWGSgqHNi9w3Cu6IXvu2mzbhiTiPvtrqgTQJ+zqiAq2iPIPilpaQ==}
@@ -1671,14 +1671,14 @@ snapshots:
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     optional: true
 
-  '@noy-db/hub@0.8.0': {}
+  '@noy-db/hub@0.9.0-pre.1': {}
+
+  '@noy-db/ports@0.9.0-pre.1(@noy-db/hub@0.9.0-pre.1)(vitest@3.2.7(@types/node@22.20.1)(happy-dom@18.0.1))':
+    dependencies:
+      '@noy-db/hub': 0.9.0-pre.1
+      vitest: 3.2.7(@types/node@22.20.1)(happy-dom@18.0.1)
 
   '@noy-db/shamir@0.8.0-pre.0': {}
-
-  '@noy-db/test-ceremony-conformance@0.8.0(@noy-db/hub@0.8.0)(vitest@3.2.7(@types/node@22.20.1)(happy-dom@18.0.1))':
-    dependencies:
-      '@noy-db/hub': 0.8.0
-      vitest: 3.2.7(@types/node@22.20.1)(happy-dom@18.0.1)
 
   '@rollup/rollup-android-arm-eabi@4.63.1':
     optional: true
