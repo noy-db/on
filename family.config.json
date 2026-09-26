@@ -11,5 +11,8 @@
     "check-license",
     "prose-examples",
     "changeset-names"
-  ]
+  ],
+  "packageSeams": {
+    "@noy-db/shamir": "dependency"
+  }
 }
