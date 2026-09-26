@@ -1,7 +1,7 @@
 {
   "name": "@noy-db/on-threat",
-  "version": "0.8.0",
-  "description": "Threat-response primitives for noy-db \u2014 multi-attempt lockout, duress-secret data destruction, duress-secret honeypot decoy. Pure stateful helpers; the caller coordinates keyring + audit-ledger integration. Part of the @noy-db/on-* authentication family.",
+  "version": "0.9.0-pre.0",
+  "description": "Threat-response primitives for noy-db — multi-attempt lockout, duress-secret data destruction, duress-secret honeypot decoy. Pure stateful helpers; the caller coordinates keyring + audit-ledger integration. Part of the @noy-db/on-* authentication family.",
   "license": "Apache-2.0",
   "author": "vLannaAi <vicio@lanna.ai>",
   "homepage": "https://github.com/noy-db/on/tree/main/on-threat#readme",

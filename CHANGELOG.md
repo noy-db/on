@@ -12,6 +12,15 @@ repo does not have. See `scripts/version-set.mjs` for the mechanism that replace
 its tarball and therefore immutable once published, a mistake here can simply be corrected in
 place. Do not apply hub's correct-alongside-in-the-next-entry constraint to this file.
 
+## 0.9.0-pre.0
+
+- Exact dev pins on `@noy-db/hub` and `@noy-db/ports` move `0.9.0-pre.1` → `0.9.0-pre.2`.
+  The `@noy-db/hub` peer range already carried `^0.9.0-pre.1` and needs no second append: for a
+  0.x caret npm reads that as `>=0.9.0-pre.1 <0.10.0`, so it already admits `0.9.0` stable.
+  `^0.9.0-pre.1` rather than `-pre.0` is deliberate — `pre.0` carries core#132 (last-writer-wins
+  `_keyring` writes, `TamperedError` on a cold read) and nothing should resolve to it.
+- No source change at the new pin: 20 test files / 259 tests, `typecheck` and every gate green.
+
 ## 0.8.0
 
 First stable release of the ten-package line under Apache-2.0, published 2026-09-13
