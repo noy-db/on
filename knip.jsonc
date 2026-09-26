@@ -1,0 +1,16 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+
+  // ⛔ EVERY IGNORE CARRIES A DISCRIMINATOR — a way to tell a knip BLIND SPOT from
+  // a defect here. A bare ignore is how a real finding gets silenced later.
+
+  // `enrollHoneypot` / `checkHoneypot` are deliberate ALIASES of the duress pair
+  // (`export const enrollHoneypot = enrollDuress`): the honeypot is the same
+  // detection mechanism under a second secret, which is the documented API.
+  // Collapsing them would change a published surface to satisfy a linter.
+  //
+  // ⭐ Discriminated AT THE SITE, not repo-wide: each alias carries an `@alias`
+  // JSDoc tag and this excludes tagged exports, so a NEW duplicate export — one
+  // nobody deliberately wrote — is still reported.
+  "tags": ["-alias"]
+}

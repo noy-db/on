@@ -14,5 +14,8 @@
   ],
   "packageSeams": {
     "@noy-db/shamir": "dependency"
-  }
+  },
+  "localChecks": [
+    "pnpm knip"
+  ]
 }

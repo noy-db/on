@@ -222,7 +222,14 @@ export async function checkDuress(input: string, digest: string, salt: string): 
  * single package keeps the security surface consistent and cuts
  * package proliferation.
  */
+/**
+ * @alias `enrollDuress` — the honeypot is the SAME mechanism under a second
+ * secret, so this is one implementation with two names by design, not a
+ * duplicate to be collapsed. Tagged so knip's `duplicates` check can be
+ * discriminated here rather than disabled repo-wide.
+ */
 export const enrollHoneypot = enrollDuress
+/** @alias `checkDuress` — see {@link enrollHoneypot}. */
 export const checkHoneypot = checkDuress
 
 // ─── internals ─────────────────────────────────────────────────────────
