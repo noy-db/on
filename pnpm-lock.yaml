@@ -42,8 +42,8 @@ importers:
   on-magic-link:
     devDependencies:
       '@noy-db/hub':
-        specifier: 0.9.0-pre.1
-        version: 0.9.0-pre.1
+        specifier: 0.9.0-pre.2
+        version: 0.9.0-pre.2
       happy-dom:
         specifier: ^18.0.0
         version: 18.0.1
@@ -51,8 +51,8 @@ importers:
   on-oidc:
     devDependencies:
       '@noy-db/hub':
-        specifier: 0.9.0-pre.1
-        version: 0.9.0-pre.1
+        specifier: 0.9.0-pre.2
+        version: 0.9.0-pre.2
       happy-dom:
         specifier: ^18.0.0
         version: 18.0.1
@@ -60,11 +60,11 @@ importers:
   on-password:
     devDependencies:
       '@noy-db/hub':
-        specifier: 0.9.0-pre.1
-        version: 0.9.0-pre.1
+        specifier: 0.9.0-pre.2
+        version: 0.9.0-pre.2
       '@noy-db/ports':
-        specifier: 0.9.0-pre.1
-        version: 0.9.0-pre.1(@noy-db/hub@0.9.0-pre.1)(vitest@3.2.7(@types/node@22.20.1)(happy-dom@18.0.1))
+        specifier: 0.9.0-pre.2
+        version: 0.9.0-pre.2(@noy-db/hub@0.9.0-pre.2)(vitest@3.2.7(@types/node@22.20.1)(happy-dom@18.0.1))
       happy-dom:
         specifier: ^18.0.0
         version: 18.0.1
@@ -72,8 +72,8 @@ importers:
   on-pin:
     devDependencies:
       '@noy-db/hub':
-        specifier: 0.9.0-pre.1
-        version: 0.9.0-pre.1
+        specifier: 0.9.0-pre.2
+        version: 0.9.0-pre.2
       happy-dom:
         specifier: ^18.0.0
         version: 18.0.1
@@ -81,8 +81,8 @@ importers:
   on-recovery:
     devDependencies:
       '@noy-db/hub':
-        specifier: 0.9.0-pre.1
-        version: 0.9.0-pre.1
+        specifier: 0.9.0-pre.2
+        version: 0.9.0-pre.2
       happy-dom:
         specifier: ^18.0.0
         version: 18.0.1
@@ -94,8 +94,8 @@ importers:
         version: 0.8.0-pre.0
     devDependencies:
       '@noy-db/hub':
-        specifier: 0.9.0-pre.1
-        version: 0.9.0-pre.1
+        specifier: 0.9.0-pre.2
+        version: 0.9.0-pre.2
 
   on-threat:
     devDependencies:
@@ -112,11 +112,11 @@ importers:
   on-webauthn:
     devDependencies:
       '@noy-db/hub':
-        specifier: 0.9.0-pre.1
-        version: 0.9.0-pre.1
+        specifier: 0.9.0-pre.2
+        version: 0.9.0-pre.2
       '@noy-db/ports':
-        specifier: 0.9.0-pre.1
-        version: 0.9.0-pre.1(@noy-db/hub@0.9.0-pre.1)(vitest@3.2.7(@types/node@22.20.1)(happy-dom@18.0.1))
+        specifier: 0.9.0-pre.2
+        version: 0.9.0-pre.2(@noy-db/hub@0.9.0-pre.2)(vitest@3.2.7(@types/node@22.20.1)(happy-dom@18.0.1))
       happy-dom:
         specifier: ^18.0.0
         version: 18.0.1
@@ -512,8 +512,8 @@ packages:
     cpu: [x64]
     os: [linux]
 
-  '@noy-db/hub@0.9.0-pre.1':
-    resolution: {integrity: sha512-yWuN6x4vZX0KwKa4OsxMpfUppsDgkh7f1TIgzffmhMZw4DKvuAN1uESBnOIkFkTCG2d5qkT22OrSiM79wJ/VRg==}
+  '@noy-db/hub@0.9.0-pre.2':
+    resolution: {integrity: sha512-FxN6P5InqIHRyylJHVO8vBUifY5Vomn9RLrCiXFS5E5XMA79yStFg1lG9dUNRCFfOhbo5Vk6uaGtDrx6XH14ow==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
       zod: ^3.0.0 || ^4.0.0
@@ -524,11 +524,11 @@ packages:
       zod-to-json-schema:
         optional: true
 
-  '@noy-db/ports@0.9.0-pre.1':
-    resolution: {integrity: sha512-3XdE626g8FeoW8rI/BcEUc2SxqJHNbMiE/qUIBBoI52Y7HP7D6Uc0E+d0s8XR7+IJdNCwPIMc2AsWy/AWqPAFA==}
+  '@noy-db/ports@0.9.0-pre.2':
+    resolution: {integrity: sha512-W57lg+9UijprKKZN1RE2ThqF/l20RM8LXI77W7Kgvpfd+TK1YBkuZ1F/pi0ERLyYqC77sc7/Zuzl17K41v/bug==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
-      '@noy-db/hub': ^0.9.0-pre.1
+      '@noy-db/hub': ^0.9.0-pre.2
       vitest: ^3.0.0
 
   '@noy-db/shamir@0.8.0-pre.0':
@@ -1671,11 +1671,11 @@ snapshots:
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     optional: true
 
-  '@noy-db/hub@0.9.0-pre.1': {}
+  '@noy-db/hub@0.9.0-pre.2': {}
 
-  '@noy-db/ports@0.9.0-pre.1(@noy-db/hub@0.9.0-pre.1)(vitest@3.2.7(@types/node@22.20.1)(happy-dom@18.0.1))':
+  '@noy-db/ports@0.9.0-pre.2(@noy-db/hub@0.9.0-pre.2)(vitest@3.2.7(@types/node@22.20.1)(happy-dom@18.0.1))':
     dependencies:
-      '@noy-db/hub': 0.9.0-pre.1
+      '@noy-db/hub': 0.9.0-pre.2
       vitest: 3.2.7(@types/node@22.20.1)(happy-dom@18.0.1)
 
   '@noy-db/shamir@0.8.0-pre.0': {}
