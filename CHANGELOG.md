@@ -12,6 +12,21 @@ repo does not have. See `scripts/version-set.mjs` for the mechanism that replace
 its tarball and therefore immutable once published, a mistake here can simply be corrected in
 place. Do not apply hub's correct-alongside-in-the-next-entry constraint to this file.
 
+## 0.9.0
+
+**Ten unlock / auth primitives join the 0.9 stable line.** No source change; this is the release that
+makes them installable alongside `hub@0.9.0`.
+
+- Exact dev pins on `@noy-db/hub` and `@noy-db/ports` move to `0.9.0`.
+- ⛔ **`peerDependencies` deliberately untouched.** The `@noy-db/hub` range already carries
+  `^0.9.0-pre.1`, and for a 0.x caret npm reads that as `>=0.9.0-pre.1 <0.10.0` — so it already admits
+  `0.9.0` stable. No second append is owed, and narrowing would gate consumers for no measured reason.
+- ⚠️ `^0.9.0-pre.1` rather than `-pre.0` remains deliberate: `pre.0` carries core#132
+  (last-writer-wins `_keyring` writes, surfacing as `TamperedError` on a cold read) and nothing should
+  resolve to it. `0.9.0` contains that fix and the create-race fix on top of it.
+- Three packages here import hub nowhere and declare no hub peer. That is deliberate, not a missing
+  declaration.
+
 ## 0.9.0-pre.0
 
 - Exact dev pins on `@noy-db/hub` and `@noy-db/ports` move `0.9.0-pre.1` → `0.9.0-pre.2`.
