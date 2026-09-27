@@ -42,8 +42,8 @@ importers:
   on-magic-link:
     devDependencies:
       '@noy-db/hub':
-        specifier: 0.9.0-pre.2
-        version: 0.9.0-pre.2(zod@4.6.5)
+        specifier: 0.9.0
+        version: 0.9.0(zod@4.6.5)
       happy-dom:
         specifier: ^18.0.0
         version: 18.0.1
@@ -51,8 +51,8 @@ importers:
   on-oidc:
     devDependencies:
       '@noy-db/hub':
-        specifier: 0.9.0-pre.2
-        version: 0.9.0-pre.2(zod@4.6.5)
+        specifier: 0.9.0
+        version: 0.9.0(zod@4.6.5)
       happy-dom:
         specifier: ^18.0.0
         version: 18.0.1
@@ -60,11 +60,11 @@ importers:
   on-password:
     devDependencies:
       '@noy-db/hub':
-        specifier: 0.9.0-pre.2
-        version: 0.9.0-pre.2(zod@4.6.5)
+        specifier: 0.9.0
+        version: 0.9.0(zod@4.6.5)
       '@noy-db/ports':
-        specifier: 0.9.0-pre.2
-        version: 0.9.0-pre.2(@noy-db/hub@0.9.0-pre.2(zod@4.6.5))(vitest@3.2.7(@types/node@22.20.1)(happy-dom@18.0.1)(jiti@2.7.0)(yaml@2.9.1))
+        specifier: 0.9.0
+        version: 0.9.0(@noy-db/hub@0.9.0(zod@4.6.5))(vitest@3.2.7(@types/node@22.20.1)(happy-dom@18.0.1)(jiti@2.7.0)(yaml@2.9.1))
       happy-dom:
         specifier: ^18.0.0
         version: 18.0.1
@@ -72,8 +72,8 @@ importers:
   on-pin:
     devDependencies:
       '@noy-db/hub':
-        specifier: 0.9.0-pre.2
-        version: 0.9.0-pre.2(zod@4.6.5)
+        specifier: 0.9.0
+        version: 0.9.0(zod@4.6.5)
       happy-dom:
         specifier: ^18.0.0
         version: 18.0.1
@@ -81,8 +81,8 @@ importers:
   on-recovery:
     devDependencies:
       '@noy-db/hub':
-        specifier: 0.9.0-pre.2
-        version: 0.9.0-pre.2(zod@4.6.5)
+        specifier: 0.9.0
+        version: 0.9.0(zod@4.6.5)
       happy-dom:
         specifier: ^18.0.0
         version: 18.0.1
@@ -94,8 +94,8 @@ importers:
         version: 0.8.0-pre.0
     devDependencies:
       '@noy-db/hub':
-        specifier: 0.9.0-pre.2
-        version: 0.9.0-pre.2(zod@4.6.5)
+        specifier: 0.9.0
+        version: 0.9.0(zod@4.6.5)
 
   on-threat:
     devDependencies:
@@ -112,11 +112,11 @@ importers:
   on-webauthn:
     devDependencies:
       '@noy-db/hub':
-        specifier: 0.9.0-pre.2
-        version: 0.9.0-pre.2(zod@4.6.5)
+        specifier: 0.9.0
+        version: 0.9.0(zod@4.6.5)
       '@noy-db/ports':
-        specifier: 0.9.0-pre.2
-        version: 0.9.0-pre.2(@noy-db/hub@0.9.0-pre.2(zod@4.6.5))(vitest@3.2.7(@types/node@22.20.1)(happy-dom@18.0.1)(jiti@2.7.0)(yaml@2.9.1))
+        specifier: 0.9.0
+        version: 0.9.0(@noy-db/hub@0.9.0(zod@4.6.5))(vitest@3.2.7(@types/node@22.20.1)(happy-dom@18.0.1)(jiti@2.7.0)(yaml@2.9.1))
       happy-dom:
         specifier: ^18.0.0
         version: 18.0.1
@@ -528,8 +528,8 @@ packages:
       '@emnapi/core': ^1.7.1 || ^2.0.0-alpha.4
       '@emnapi/runtime': ^1.7.1 || ^2.0.0-alpha.4
 
-  '@noy-db/hub@0.9.0-pre.2':
-    resolution: {integrity: sha512-FxN6P5InqIHRyylJHVO8vBUifY5Vomn9RLrCiXFS5E5XMA79yStFg1lG9dUNRCFfOhbo5Vk6uaGtDrx6XH14ow==}
+  '@noy-db/hub@0.9.0':
+    resolution: {integrity: sha512-KEmlOw6YmMDB6fi7gFJKGaMYuifNIWN16SlUDUrmIDf22xLczh3L0bOZlbhW+FhmmjlOJiZF/FjYxNJS+Ee11w==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
       zod: ^3.0.0 || ^4.0.0
@@ -540,16 +540,17 @@ packages:
       zod-to-json-schema:
         optional: true
 
-  '@noy-db/ports@0.9.0-pre.2':
-    resolution: {integrity: sha512-W57lg+9UijprKKZN1RE2ThqF/l20RM8LXI77W7Kgvpfd+TK1YBkuZ1F/pi0ERLyYqC77sc7/Zuzl17K41v/bug==}
+  '@noy-db/ports@0.9.0':
+    resolution: {integrity: sha512-Myt30JSMM2NU4wNlJveM/gcI3VR3OzegdDJJ0L17UWKasq4KCxBiX8qCAM6NS1n+4pfU3PFKfpQ1mLu5636aqg==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
-      '@noy-db/hub': ^0.9.0-pre.2
+      '@noy-db/hub': ^0.9.0
       vitest: ^3.0.0
 
   '@noy-db/shamir@0.8.0-pre.0':
     resolution: {integrity: sha512-8lKn52DKupUDK8SJCp10UXwJNjsJb/Ch5hb9+wiNsEOH1p7EQNQgxtxqPlE0yOzHjAaldmbBaGsz4vm4c9okWQ==}
     engines: {node: '>=22.0.0'}
+    deprecated: Superseded by 0.8.0. The 0.8 line is the supported release. 0.7.0 to 0.8.0 is witnessed in both directions for pod data (upgrade and rollback). Versions below 0.7.0 have no witnessed migration path - read the 0.8.0 release notes before moving.
 
   '@oxc-parser/binding-android-arm-eabi@0.150.0':
     resolution: {integrity: sha512-oQef2Zu4Prz1KLKznz3HqZzU9uVoA5PMoDZuuLmqms7hKmKSAPzlaMnLllJq3t+rgKmfJJ2siPrpZfFrW06btw==}
@@ -1985,13 +1986,13 @@ snapshots:
       '@tybys/wasm-util': 0.10.4
     optional: true
 
-  '@noy-db/hub@0.9.0-pre.2(zod@4.6.5)':
+  '@noy-db/hub@0.9.0(zod@4.6.5)':
     optionalDependencies:
       zod: 4.6.5
 
-  '@noy-db/ports@0.9.0-pre.2(@noy-db/hub@0.9.0-pre.2(zod@4.6.5))(vitest@3.2.7(@types/node@22.20.1)(happy-dom@18.0.1)(jiti@2.7.0)(yaml@2.9.1))':
+  '@noy-db/ports@0.9.0(@noy-db/hub@0.9.0(zod@4.6.5))(vitest@3.2.7(@types/node@22.20.1)(happy-dom@18.0.1)(jiti@2.7.0)(yaml@2.9.1))':
     dependencies:
-      '@noy-db/hub': 0.9.0-pre.2(zod@4.6.5)
+      '@noy-db/hub': 0.9.0(zod@4.6.5)
       vitest: 3.2.7(@types/node@22.20.1)(happy-dom@18.0.1)(jiti@2.7.0)(yaml@2.9.1)
 
   '@noy-db/shamir@0.8.0-pre.0': {}
