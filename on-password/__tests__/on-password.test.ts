@@ -19,7 +19,7 @@ import {
   PasswordTooWeakError,
   PasswordInvalidError,
 } from '../src/index.js'
-import type { UnlockedKeyring, KeyringAuthenticator, NoydbStore, EncryptedEnvelope, KeyringFile, SlotRewrapContext } from '@noy-db/hub'
+import type { UnlockedKeyring, KeyringAuthenticator, NoydbStore, EncryptedEnvelope, SlotRewrapContext } from '@noy-db/hub'
 import { ValidationError, createNoydb, withTeam, enrollAuthenticator, removeAuthenticator, findAuthenticator } from '@noy-db/hub'
 
 const subtle = globalThis.crypto.subtle
