@@ -90,8 +90,8 @@ importers:
   on-shamir:
     dependencies:
       '@noy-db/shamir':
-        specifier: ^0.8.0-pre.0
-        version: 0.8.0-pre.0
+        specifier: ^0.8.0-pre.0 || ^0.9.0 || ^0.10.0-pre.0
+        version: 0.9.0
     devDependencies:
       '@noy-db/hub':
         specifier: 0.9.0
@@ -547,10 +547,9 @@ packages:
       '@noy-db/hub': ^0.9.0
       vitest: ^3.0.0
 
-  '@noy-db/shamir@0.8.0-pre.0':
-    resolution: {integrity: sha512-8lKn52DKupUDK8SJCp10UXwJNjsJb/Ch5hb9+wiNsEOH1p7EQNQgxtxqPlE0yOzHjAaldmbBaGsz4vm4c9okWQ==}
+  '@noy-db/shamir@0.9.0':
+    resolution: {integrity: sha512-i9zrnSIcJVhX+D932f7n3Zsj4mcHDJC4Odo9Nx7Ff9nihJaFdg/rwwCkL0zd97oSRikzh5QQ3RL4KLIab8iSsw==}
     engines: {node: '>=22.0.0'}
-    deprecated: Superseded by 0.8.0. The 0.8 line is the supported release. 0.7.0 to 0.8.0 is witnessed in both directions for pod data (upgrade and rollback). Versions below 0.7.0 have no witnessed migration path - read the 0.8.0 release notes before moving.
 
   '@oxc-parser/binding-android-arm-eabi@0.150.0':
     resolution: {integrity: sha512-oQef2Zu4Prz1KLKznz3HqZzU9uVoA5PMoDZuuLmqms7hKmKSAPzlaMnLllJq3t+rgKmfJJ2siPrpZfFrW06btw==}
@@ -1995,7 +1994,7 @@ snapshots:
       '@noy-db/hub': 0.9.0(zod@4.6.5)
       vitest: 3.2.7(@types/node@22.20.1)(happy-dom@18.0.1)(jiti@2.7.0)(yaml@2.9.1)
 
-  '@noy-db/shamir@0.8.0-pre.0': {}
+  '@noy-db/shamir@0.9.0': {}
 
   '@oxc-parser/binding-android-arm-eabi@0.150.0':
     optional: true
