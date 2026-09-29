@@ -1,6 +1,6 @@
 {
   "name": "@noy-db/on-oidc",
-  "version": "0.9.0",
+  "version": "0.10.0-pre.0",
   "description": "OAuth/OIDC bridge for noy-db — federated login (LINE, Google, Apple, Okta) with split-key key connector — server never sees plaintext",
   "license": "Apache-2.0",
   "author": "vLannaAi <vicio@lanna.ai>",
@@ -39,10 +39,10 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json"
   },
   "peerDependencies": {
-    "@noy-db/hub": "^0.7.0 || ^0.7.1-pre.0 || ^0.8.0-pre.0 || ^0.9.0-pre.1"
+    "@noy-db/hub": "^0.7.0 || ^0.7.1-pre.0 || ^0.8.0-pre.0 || ^0.9.0-pre.1 || ^0.10.0-pre.0"
   },
   "devDependencies": {
-    "@noy-db/hub": "0.9.0",
+    "@noy-db/hub": "0.10.0-pre.0",
     "happy-dom": "^18.0.0"
   },
   "keywords": [

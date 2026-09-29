@@ -12,6 +12,18 @@ repo does not have. See `scripts/version-set.mjs` for the mechanism that replace
 its tarball and therefore immutable once published, a mistake here can simply be corrected in
 place. Do not apply hub's correct-alongside-in-the-next-entry constraint to this file.
 
+## 0.10.0-pre.0
+
+**Ten unlock / auth primitives join the 0.10 pre line**, in the whole-family `0.10.0-pre.0` cut. No
+source change in any package except `on-shamir`'s dependency range.
+
+- Exact dev pins on `@noy-db/hub` and `@noy-db/ports` move to `0.10.0-pre.0`.
+- `peerDependencies`: `|| ^0.10.0-pre.0` **appended** to every `@noy-db/hub` range. A 0.x caret
+  excludes the next minor, so `^0.9.0-pre.1` does not admit `0.10.0-pre.0`.
+- ⭐ **`on-shamir`'s `@noy-db/shamir` dependency now reads `^0.8.0-pre.0 || ^0.9.0 || ^0.10.0-pre.0`**
+  (family#71). `on-shamir@0.9.0` published `^0.8.0-pre.0`, which pinned every consumer to the
+  deprecated `shamir@0.8.0`. The lockfile resolves `0.10.0-pre.0`.
+
 ## 0.9.0
 
 **Ten unlock / auth primitives join the 0.9 stable line.** No source change; this is the release that
