@@ -88,10 +88,6 @@ importers:
         version: 18.0.1
 
   on-shamir:
-    dependencies:
-      '@noy-db/shamir':
-        specifier: ^0.8.0-pre.0 || ^0.9.0 || ^0.10.0-pre.0
-        version: 0.10.0-pre.0
     devDependencies:
       '@noy-db/hub':
         specifier: 0.10.0-pre.0
@@ -546,10 +542,6 @@ packages:
     peerDependencies:
       '@noy-db/hub': ^0.10.0-pre.0
       vitest: ^3.0.0
-
-  '@noy-db/shamir@0.10.0-pre.0':
-    resolution: {integrity: sha512-BE9rm0uRdw7sPmndtN6gYkW8S4IW5lJ2BivoVI+ly8iXoLKwYUNPLiv1/xpAHmWP2KSwApInv75401Im3Mm4Sg==}
-    engines: {node: '>=22.0.0'}
 
   '@oxc-parser/binding-android-arm-eabi@0.150.0':
     resolution: {integrity: sha512-oQef2Zu4Prz1KLKznz3HqZzU9uVoA5PMoDZuuLmqms7hKmKSAPzlaMnLllJq3t+rgKmfJJ2siPrpZfFrW06btw==}
@@ -1993,8 +1985,6 @@ snapshots:
     dependencies:
       '@noy-db/hub': 0.10.0-pre.0(zod@4.6.5)
       vitest: 3.2.7(@types/node@22.20.1)(happy-dom@18.0.1)(jiti@2.7.0)(yaml@2.9.1)
-
-  '@noy-db/shamir@0.10.0-pre.0': {}
 
   '@oxc-parser/binding-android-arm-eabi@0.150.0':
     optional: true

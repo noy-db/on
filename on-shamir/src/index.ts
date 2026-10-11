@@ -17,11 +17,12 @@
  * a distinct x-coordinate. Lagrange interpolation at x=0 recovers
  * the byte.
  *
- * The math and the share codecs live in **`@noy-db/shamir`** — a
- * zero-dependency primitive with no hub contract — and are re-exported
- * here unchanged, so this package's published surface is unaltered by
- * the split. Import from `@noy-db/shamir` directly when composing
- * threshold sharing into something that is not a noy-db unlock method.
+ * The math (`gf256.ts`, `shamir.ts`) and the share codecs
+ * (`share-format.ts`) ship inside this package since 0.10 — zero
+ * dependencies, no hub contract. They were published separately as
+ * `@noy-db/shamir`, which had no consumer but this one and is deprecated
+ * (family#73). Every symbol re-exported from it before is still exported
+ * here under the same name.
  *
  * ## Threat model
  *
@@ -91,21 +92,27 @@ export {
   gfInv,
   gfPolyEval,
   lagrangeInterpolateAtZero,
+} from './gf256.js'
+
+export {
   splitSecret,
   combineSecret,
+  type RawShare,
+} from './shamir.js'
+
+export {
   encodeShareBytes,
   decodeShareBytes,
   encodeShareBase32,
   decodeShareBase32,
   encodeShareJSON,
   decodeShareJSON,
-  type RawShare,
   type ShareJSON,
-} from '@noy-db/shamir'
+} from './share-format.js'
 
-import type { RawShare } from '@noy-db/shamir'
-import { combineSecret, splitSecret } from '@noy-db/shamir'
-import { encodeShareBase32, decodeShareBase32 } from '@noy-db/shamir'
+import type { RawShare } from './shamir.js'
+import { combineSecret, splitSecret } from './shamir.js'
+import { encodeShareBase32, decodeShareBase32 } from './share-format.js'
 
 // ── High-level KEK API ──────────────────────────────────────────────────
 
