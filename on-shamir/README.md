@@ -79,6 +79,11 @@ Implemented in ~120 LoC of pure TypeScript (`gf256.ts` + `shamir.ts`). Zero cryp
 
 Reduction polynomial: x^8 + x^4 + x^3 + x + 1 (0x11b, same as AES).
 
+The math and the share codecs ship inside this package since 0.10. They used to be published
+separately as `@noy-db/shamir`, which nothing but this package consumed; it is deprecated in favour of
+`@noy-db/on-shamir`, and every symbol this package re-exported from it is still exported here under
+the same name.
+
 ## Usage
 
 ### Enroll — after primary unlock

@@ -12,6 +12,19 @@ repo does not have. See `scripts/version-set.mjs` for the mechanism that replace
 its tarball and therefore immutable once published, a mistake here can simply be corrected in
 place. Do not apply hub's correct-alongside-in-the-next-entry constraint to this file.
 
+## Unreleased
+
+- ⭐ **`on-shamir` now ships the Shamir math itself** (family#73). The GF(2^8) arithmetic, the
+  split/combine and the share codecs (`gf256.ts`, `shamir.ts`, `share-format.ts`, 493 lines, zero
+  dependencies) and their tests moved in from core's `@noy-db/shamir`, byte-identical to its
+  `0.10.0-pre.1` source. The **`@noy-db/shamir` dependency is dropped**, so `on-shamir` has no
+  dependencies at all — its only edge is the `@noy-db/hub` peer.
+- All 16 symbols (14 functions, 2 types) `on-shamir` re-exported from `@noy-db/shamir` are still exported from its
+  root under the **same names**; the published surface is unchanged.
+- `@noy-db/shamir` had no consumer but `on-shamir` and is **deprecated** in favour of it.
+- The `packageSeams` entry for `@noy-db/shamir` leaves `family.config.json`: no package here imports
+  it, and the `architecture` gate refuses a stale seam.
+
 ## 0.10.0-pre.0
 
 **Ten unlock / auth primitives join the 0.10 pre line**, in the whole-family `0.10.0-pre.0` cut. No

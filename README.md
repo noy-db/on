@@ -15,9 +15,8 @@ Extracted from the `noy-db` monorepo so hub can iterate without republishing thi
 | `on-oidc` | federated identity |
 | `on-recovery` · `on-threat` | recovery flows and threat signals |
 
-**`@noy-db/on-shamir` is deliberately NOT here** — it stays in the core `noy-db` repo. Hub's own
-recovery suite imports it in seven test files to exercise real k-of-n threshold behaviour, and
-moving it would put hub's inner loop behind this repo's publish cadence.
+**`@noy-db/on-shamir`** — k-of-n threshold unlock — lives here too, since 0.7.1, and since 0.10 it
+carries its own GF(2^8) math: the former `@noy-db/shamir` primitive is folded in and deprecated.
 
 ## Two shapes in one family
 
