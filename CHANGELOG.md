@@ -24,6 +24,9 @@ place. Do not apply hub's correct-alongside-in-the-next-entry constraint to this
 - `@noy-db/shamir` had no consumer but `on-shamir` and is **deprecated** in favour of it.
 - The `packageSeams` entry for `@noy-db/shamir` leaves `family.config.json`: no package here imports
   it, and the `architecture` gate refuses a stale seam.
+- `on-email-otp`: the docs now say plainly that **the record must be treated as the code until it
+  expires** (family#128). The salt is stored beside a SHA-256 digest of a 6-digit code, so anyone
+  holding the record recovers the code in milliseconds. No code change.
 
 ## 0.10.0-pre.0
 
