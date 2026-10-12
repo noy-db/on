@@ -38,6 +38,9 @@ place. Do not apply hub's correct-alongside-in-the-next-entry constraint to this
   holding the older sub-only keys still reads them; they are never written again.
 - `OidcTokenError`'s doc no longer claims a client-side "wrong issuer" check; `iss`/`aud` are verified
   by the key-connector with the signature.
+- `on-email-otp`: the docs now say plainly that **the record must be treated as the code until it
+  expires** (family#128). The salt is stored beside a SHA-256 digest of a 6-digit code, so anyone
+  holding the record recovers the code in milliseconds. No code change.
 - `on-threat`: `recordFailure` on a wiped state answers `{ locked: true, wipe: true }` (family#130). It
   set `wiped` but no `lockedUntil`, so once the window aged out a later failure reset the count and
   reported `locked: false` while `isLocked` said true.
