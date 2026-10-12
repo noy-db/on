@@ -13,6 +13,7 @@
     "changeset-names"
   ],
   "localChecks": [
-    "pnpm knip"
+    "pnpm knip",
+    "node scripts/check-architecture.mjs"
   ]
 }

@@ -12,5 +12,10 @@
   // ⭐ Discriminated AT THE SITE, not repo-wide: each alias carries an `@alias`
   // JSDoc tag and this excludes tagged exports, so a NEW duplicate export — one
   // nobody deliberately wrote — is still reported.
-  "tags": ["-alias"]
+  "tags": ["-alias"],
+
+  // `scripts/check-architecture.mjs` is run by CI through `family.config.json`
+  // `localChecks`, which knip does not read — so it is an ENTRY, not dead code.
+  // Discriminator: it is named in `localChecks`; a script that is not stays reported.
+  "workspaces": { ".": { "entry": ["scripts/check-architecture.mjs"] } }
 }
