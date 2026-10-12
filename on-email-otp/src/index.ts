@@ -39,6 +39,15 @@
  * - The record carries `sha256(code + salt)` — the plaintext code is
  *   never written to storage. Verification hashes the input with the
  *   stored salt and compares in constant time.
+ * - ⛔ **TREAT THE RECORD AS THE CODE until it expires.** The salt sits
+ *   beside the digest and the code space is 10⁶, so anyone who reads the
+ *   record recovers the code by trying every candidate — milliseconds on a
+ *   laptop. The digest keeps the code out of casual view (logs, dumps); it
+ *   does NOT protect a record that leaks, is synced to a store others can
+ *   read, or is held by the party being challenged. Keep records server-side
+ *   in storage only the verifier reads, for no longer than `ttlSeconds`
+ *   (family#128). A slow KDF would not change this: 10⁶ guesses fit inside
+ *   a 5-minute TTL on commodity hardware.
  * - `expiresAt` is enforced on every `verifyEmailOtp()` — expired records are
  *   rejected before the hash comparison.
  * - Burn-on-success is the caller's responsibility — delete the
@@ -70,7 +79,12 @@ export interface EmailOtpIssueOptions {
 
 export interface EmailOtpRecord {
   readonly email: string
-  readonly digest: string        // hex SHA-256(code ⊕ salt)
+  /**
+   * Hex SHA-256(code ‖ salt). ⛔ With `salt` beside it this is brute-forced
+   * from a 10⁶ space in milliseconds — the record is as secret as the code
+   * until `expiresAt` (see the package header, family#128).
+   */
+  readonly digest: string
   readonly salt: string          // hex
   readonly issuedAt: string
   readonly expiresAt: string
