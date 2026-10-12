@@ -96,6 +96,12 @@
  *     device-local, never transmitted), they cannot reconstruct the KEK.
  *   - Compromise of the key-connector server: attacker gets all `serverHalf`
  *     values. Still cannot reconstruct KEKs without the per-device secrets.
+ *     ⛔ Nor can it REWRITE the reconstructed identity (role, permissions):
+ *     it holds the transport key — that is HKDF of the Bearer ID token it is
+ *     sent — so it can re-encrypt any serverHalf, and XOR is bit-malleable.
+ *     The payload is therefore HMAC-tagged under a key derived from the
+ *     device secret, the tag kept on the enrollment record (never sent), and
+ *     verified before parsing (family#125).
  *   - Phishing / stolen device: attacker has `deviceHalf` (from the device)
  *     but needs a valid OIDC token to get `serverHalf`.
  *   - Full compromise (OIDC + key-connector + device): KEK is reconstructed.
@@ -174,7 +180,8 @@ export { ValidationError } from '@noy-db/hub'
  * This package does NOT perform full server-side verification — that is the
  * responsibility of the key-connector server. `OidcTokenError` is thrown
  * client-side when the token is structurally invalid (missing `sub`, expired
- * `exp`, wrong issuer) before a network call is made.
+ * `exp`) before a network call is made. `iss` and `aud` are NOT compared
+ * client-side — the key-connector verifies them with the signature.
  */
 export class OidcTokenError extends Error {
   readonly code = 'OIDC_TOKEN_ERROR'
@@ -231,6 +238,39 @@ export class OidcDeviceSecretNotFoundError extends Error {
       'to enroll this device — enrolled devices cannot hand off credentials to it.',
     )
     this.name = 'OidcDeviceSecretNotFoundError'
+  }
+}
+
+/**
+ * Thrown by `unlockOidc()` when the reconstructed keyring payload cannot be
+ * authenticated (family#125).
+ *
+ * - `reason: 'tampered'` — the HMAC over the reconstructed payload does not
+ *   verify. The key-connector returned a serverHalf this partition did not
+ *   enroll (a compromised or misbehaving connector), or the enrollment record
+ *   does not belong to this partition's device secret / vault.
+ * - `reason: 'legacy-enrollment'` — the enrollment record predates the tag
+ *   and carries none, so its role and permissions cannot be verified. The
+ *   partition must enroll again through a firm re-invite.
+ *
+ * ⛔ Never retry around it: the payload it refused would hand the session a
+ * role and permissions nobody verified.
+ */
+export class OidcEnrollmentIntegrityError extends Error {
+  readonly code = 'OIDC_ENROLLMENT_INTEGRITY'
+  readonly reason: 'tampered' | 'legacy-enrollment'
+  constructor(reason: 'tampered' | 'legacy-enrollment') {
+    super(
+      reason === 'tampered'
+        ? 'The OIDC enrollment payload failed its integrity check: the key-connector returned a ' +
+          'fragment this device did not enroll, or the enrollment record belongs to another ' +
+          'device or vault. Refusing to unlock.'
+        : 'This OIDC enrollment predates the integrity tag, so the identity it reconstructs cannot ' +
+          'be verified. Request a fresh enrollment invite from the vault custodian (firm re-invite) ' +
+          'and enroll this device again.',
+    )
+    this.name = 'OidcEnrollmentIntegrityError'
+    this.reason = reason
   }
 }
 
@@ -291,6 +331,14 @@ export interface OidcEnrollment {
    * entirely (legacy single-entry server contract).
    */
   readonly deviceId?: string
+  /**
+   * HMAC-SHA256 (base64) over the padded keyring payload, keyed by
+   * HKDF(deviceSecret, sub, vault) — family#125. Never sent to the
+   * key-connector; `unlockOidc` refuses a payload it does not verify, and
+   * refuses a record without one (`OidcEnrollmentIntegrityError`,
+   * `reason: 'legacy-enrollment'`).
+   */
+  readonly integrityTag?: string
 }
 
 /** One per-device serverHalf entry, as listed by `listOidcDevices()`. */
@@ -376,6 +424,31 @@ async function deriveDeviceHalf(
     keyLengthBytes * 8,
   )
   return new Uint8Array(bits)
+}
+
+/**
+ * The payload MAC key. Same IKM and salt as `deriveDeviceHalf`, a DISTINCT
+ * `info`, so the two outputs are independent.
+ */
+async function deriveIntegrityKey(
+  deviceSecret: Uint8Array,
+  sub: string,
+  vault: string,
+): Promise<CryptoKey> {
+  const subtle = globalThis.crypto.subtle
+  const ikm = await subtle.importKey('raw', deviceSecret as Uint8Array<ArrayBuffer>, 'HKDF', false, ['deriveKey'])
+  return subtle.deriveKey(
+    {
+      name: 'HKDF',
+      hash: 'SHA-256',
+      salt: new TextEncoder().encode(sub),
+      info: new TextEncoder().encode(`noydb-oidc-integrity-v1:${vault}`),
+    },
+    ikm,
+    { name: 'HMAC', hash: 'SHA-256', length: 256 },
+    false,
+    ['sign', 'verify'],
+  )
 }
 
 // ─── XOR key operations ────────────────────────────────────────────────
@@ -554,6 +627,8 @@ export async function enrollOidc(
 
   const deviceHalf = await deriveDeviceHalf(deviceSecret, claims.sub, vault, padded.length)
   const serverHalf = xorBytes(padded, deviceHalf)
+  const integrityKey = await deriveIntegrityKey(deviceSecret, claims.sub, vault)
+  const integrityTag = await subtle.sign('HMAC', integrityKey, padded)
 
   // Encrypt serverHalf with the ID token using HKDF(idToken) as the key
   // The server decrypts this with the same derivation, storing only the plaintext serverHalf
@@ -582,6 +657,7 @@ export async function enrollOidc(
     deviceKeyId,
     enrollmentCount: 1,
     deviceId,
+    integrityTag: bufferToBase64(integrityTag),
   }
 }
 
@@ -695,6 +771,20 @@ export async function unlockOidc(
   // Reconstruct the padded payload
   const deviceHalf = await deriveDeviceHalf(deviceSecret, sub, vault, serverHalf.length)
   const padded = xorBytes(serverHalf, deviceHalf)
+
+  // Authenticate BEFORE parsing: the connector can rewrite serverHalf
+  // (family#125), and a wrong device secret yields garbage, not an error.
+  if (enrollment.integrityTag === undefined) {
+    throw new OidcEnrollmentIntegrityError('legacy-enrollment')
+  }
+  const integrityKey = await deriveIntegrityKey(deviceSecret, sub, vault)
+  const verified = await globalThis.crypto.subtle.verify(
+    'HMAC',
+    integrityKey,
+    base64ToBuffer(enrollment.integrityTag),
+    padded as Uint8Array<ArrayBuffer>,
+  )
+  if (!verified) throw new OidcEnrollmentIntegrityError('tampered')
 
   // Parse the payload (strip padding: find the last non-null byte + 1)
   let payloadEnd = padded.length
