@@ -323,6 +323,7 @@ describe('no self-propagation (firm re-invite is the ONLY new-device path)', () 
     expect(valueExports).toEqual([
       'KeyConnectorError',
       'OidcDeviceSecretNotFoundError',
+      'OidcEnrollmentIntegrityError',
       'OidcTokenError',
       'ValidationError',
       'enrollOidc',
