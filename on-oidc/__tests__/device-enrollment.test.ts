@@ -376,7 +376,7 @@ describe('backward compat — server that ignores deviceId', () => {
     // without deviceId AND no partition-stored device id.
     const { deviceId: _dropped, ...legacyFields } = enrollment
     const legacyEnrollment = legacyFields as OidcEnrollment
-    storage.removeItem(`noydb:oidc:device-id:${enrollment.sub}`)
+    storage.removeItem(`noydb:oidc:device-id:LINE:${encodeURIComponent(enrollment.sub)}:company-a`)
 
     const unlocked = await unlockOidc(legacyEnrollment, TEST_CONFIG, token, { storage })
     expect(unlocked.userId).toBe('u1')
@@ -385,5 +385,48 @@ describe('backward compat — server that ignores deviceId', () => {
     const getCall = mockFetch.mock.calls.find(([, init]) =>
       ((init as RequestInit | undefined)?.method ?? 'GET').toUpperCase() === 'GET')
     expect(String(getCall![0])).toBe('https://kc.example.com/kek-fragment')
+  })
+})
+
+// ─── family#126 — device material is scoped per (provider, sub, vault) ────────
+
+describe('family#126 — two vaults, one sub, one partition', () => {
+  it('enrolling a second vault does not break the first', async () => {
+    const token = makeIdToken()
+    const { mockFetch } = makeDeviceAwareConnector()
+    vi.stubGlobal('fetch', mockFetch)
+    const storage = makeStorage()
+
+    const enrollmentA = await enrollOidc(
+      await makeInviteKeyring('u-a'), 'company-a', TEST_CONFIG, token, { storage },
+    )
+    const enrollmentB = await enrollOidc(
+      await makeInviteKeyring('u-b'), 'company-b', TEST_CONFIG, token, { storage },
+    )
+
+    expect((await unlockOidc(enrollmentA, TEST_CONFIG, token, { storage })).userId).toBe('u-a')
+    expect((await unlockOidc(enrollmentB, TEST_CONFIG, token, { storage })).userId).toBe('u-b')
+  })
+
+  it('a partition written before the fix (secret + id under the sub-only key) still unlocks', async () => {
+    const token = makeIdToken()
+    const { mockFetch } = makeDeviceAwareConnector()
+    vi.stubGlobal('fetch', mockFetch)
+    const storage = makeStorage()
+    const enrollment = await enrollOidc(
+      await makeInviteKeyring('u1'), 'company-a', TEST_CONFIG, token, { storage },
+    )
+
+    // Rewrite the partition into the pre-#126 layout: one secret + id per sub.
+    for (const kind of ['device-secret', 'device-id'] as const) {
+      const prefix = `noydb:oidc:${kind}:`
+      const scoped = [...Array(storage.length).keys()]
+        .map(i => storage.key(i)!)
+        .find(k => k.startsWith(prefix))!
+      storage.setItem(prefix + enrollment.sub, storage.getItem(scoped)!)
+      storage.removeItem(scoped)
+    }
+
+    expect((await unlockOidc(enrollment, TEST_CONFIG, token, { storage })).userId).toBe('u1')
   })
 })

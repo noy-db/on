@@ -35,9 +35,21 @@
  * const uri = totpProvisioningUri(secret, { account: 'alice@acme.com', issuer: 'Acme' })
  * // Show QR code of `uri`.
  *
- * // Unlock
- * const ok = await verifyTotp(secret, userEnteredCode)
+ * // Unlock — refuse replays (RFC 6238 §5.2): persist the accepted step
+ * const step = await verifyTotpStep(secret, userEnteredCode, { lastUsedStep })
+ * if (step === null) throw new Error('bad or reused code')
+ * lastUsedStep = step  // store it before treating the factor as passed
  * ```
+ *
+ * ## ⛔ Replay is the CALLER's to prevent
+ *
+ * This package is stateless. A code verifies for every step inside the
+ * drift window (±1 by default, so ~90 s), so a shoulder-surfed or
+ * phished code works again until it ages out — unless the caller records
+ * the step `verifyTotpStep` returns and passes it back as `lastUsedStep`,
+ * which refuses that step and every earlier one. Store it per secret, and
+ * where the party presenting codes cannot rewind it: a `lastUsedStep` an
+ * attacker can reset is no protection.
  *
  * @packageDocumentation
  */
@@ -142,6 +154,13 @@ export interface VerifyTotpOptions extends TotpOptions {
   readonly window?: number
   /** Override "now" for deterministic tests. */
   readonly timestamp?: number
+  /**
+   * The step of the last code accepted for this secret, as returned by
+   * `verifyTotpStep`. Codes for this step or any earlier one are refused —
+   * RFC 6238 §5.2 replay prevention (family#129). Omitted, nothing is
+   * refused, and replay within the window is possible.
+   */
+  readonly lastUsedStep?: number
 }
 
 /** Compute the TOTP code for the given secret at the current time. */
@@ -152,22 +171,37 @@ export async function generateTotpCode(secret: string, options: TotpOptions = {}
 
 /**
  * Verify a user-entered code against the secret. Constant-time comparison;
- * accepts drift within `window` steps.
+ * accepts drift within `window` steps. Refuses steps at or before
+ * `options.lastUsedStep`.
+ *
+ * ⚠️ A boolean cannot tell the caller WHICH step matched, so it cannot feed
+ * replay prevention on its own — use `verifyTotpStep` for that.
  */
 export async function verifyTotp(secret: string, code: string, options: VerifyTotpOptions = {}): Promise<boolean> {
+  return (await verifyTotpStep(secret, code, options)) !== null
+}
+
+/**
+ * Verify a code and return the step it matched, or `null`. Persist the
+ * returned step and pass it back as `lastUsedStep` on the next call to
+ * refuse a replay (RFC 6238 §5.2, family#129).
+ */
+export async function verifyTotpStep(secret: string, code: string, options: VerifyTotpOptions = {}): Promise<number | null> {
   const digits = options.digits ?? 6
-  if (code.length !== digits) return false
+  if (code.length !== digits) return null
   const window = options.window ?? 1
   const now = options.timestamp ?? Math.floor(Date.now() / 1000)
   const period = options.period ?? 30
   const step = Math.floor(now / period)
+  const floor = options.lastUsedStep ?? -Infinity
 
   // Gather the candidate codes and do constant-time equality — avoids the
-  // wall-clock timing oracle on mismatches.
-  let matched = false
+  // wall-clock timing oracle on mismatches. Every candidate is computed,
+  // refused steps included; only the match is masked.
+  let matched: number | null = null
   for (let i = -window; i <= window; i++) {
     const candidate = await codeAtStep(secret, step + i, options)
-    if (constantTimeEqual(candidate, code)) matched = true
+    if (constantTimeEqual(candidate, code) && step + i > floor) matched = step + i
   }
   return matched
 }
