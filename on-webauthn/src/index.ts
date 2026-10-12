@@ -895,8 +895,13 @@ export async function webAuthnSlotRewrapCeremony(
       credentialId: meta.credentialId,
       wrapIv: bufferToBase64(newIv),
       prfUsed,
-      beFlag,
+      // The ENROLLMENT-time flag, as the field is documented to hold — the
+      // assertion-time one only gates this ceremony (family#127).
+      beFlag: meta.beFlag === true,
       requireSingleDevice: meta.requireSingleDevice === true,
+      // The RP ID the credential was just asserted under. Dropping it would
+      // make the next unlock default to the page hostname (family#127).
+      ...(rpId !== undefined ? { rpId } : {}),
     },
   }
 }

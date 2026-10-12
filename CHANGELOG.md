@@ -24,6 +24,11 @@ place. Do not apply hub's correct-alongside-in-the-next-entry constraint to this
 - `@noy-db/shamir` had no consumer but `on-shamir` and is **deprecated** in favour of it.
 - The `packageSeams` entry for `@noy-db/shamir` leaves `family.config.json`: no package here imports
   it, and the `architecture` gate refuses a stale seam.
+- `on-webauthn`: `webAuthnSlotRewrapCeremony` keeps the slot's `rpId` (family#127). It asserted under
+  `meta.rpId` but returned meta without it, so one `rotateSecret` stripped the RP ID and the next
+  unlock defaulted to the page hostname — a credential enrolled under `example.com` became invisible to
+  `app.example.com`. The returned meta now carries the RP ID asserted under (slot or `options.rpId`),
+  and `beFlag` keeps the enrollment-time value instead of the assertion-time one.
 
 ## 0.10.0-pre.0
 
