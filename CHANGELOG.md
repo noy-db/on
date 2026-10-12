@@ -33,6 +33,9 @@ place. Do not apply hub's correct-alongside-in-the-next-entry constraint to this
 - ⚠️ **Breaking for existing OIDC devices:** an enrollment record without `integrityTag` is refused
   (`reason: 'legacy-enrollment'`) — its role and permissions cannot be verified. Each such partition
   enrolls again through a firm re-invite (`enrollOidcFromInvite`).
+- `on-oidc`: device secret and device id are stored per (provider, sub, vault) (family#126). Keyed by `sub`
+  alone, enrolling a second vault overwrote the first vault's material and broke its unlock. A partition
+  holding the older sub-only keys still reads them; they are never written again.
 - `OidcTokenError`'s doc no longer claims a client-side "wrong issuer" check; `iss`/`aud` are verified
   by the key-connector with the signature.
 - `on-threat`: `recordFailure` on a wiped state answers `{ locked: true, wipe: true }` (family#130). It
@@ -41,6 +44,11 @@ place. Do not apply hub's correct-alongside-in-the-next-entry constraint to this
 - `on-magic-link`: `ClaimMagicLinkDelegationResult.valid`'s doc matched to the code (family#130) —
   revocation yields `valid: false` (no record found), and `valid: true` with no grants means
   corruption. The doc had them the other way round.
+- `on-totp`: replay prevention (family#129, RFC 6238 §5.2). New `verifyTotpStep` returns the matched
+  step (or `null`); the new `lastUsedStep` option on both verifiers refuses that step and every earlier
+  one. The package stays stateless — **persisting the step is the caller's job**, documented in the
+  package header. Without it a code still verifies for the whole drift window (~90 s). `verifyTotp`'s
+  signature and result are unchanged.
 
 ## 0.10.0-pre.0
 
