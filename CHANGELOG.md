@@ -38,6 +38,11 @@ place. Do not apply hub's correct-alongside-in-the-next-entry constraint to this
   holding the older sub-only keys still reads them; they are never written again.
 - `OidcTokenError`'s doc no longer claims a client-side "wrong issuer" check; `iss`/`aud` are verified
   by the key-connector with the signature.
+- `on-webauthn`: `webAuthnSlotRewrapCeremony` keeps the slot's `rpId` (family#127). It asserted under
+  `meta.rpId` but returned meta without it, so one `rotateSecret` stripped the RP ID and the next
+  unlock defaulted to the page hostname — a credential enrolled under `example.com` became invisible to
+  `app.example.com`. The returned meta now carries the RP ID asserted under (slot or `options.rpId`),
+  and `beFlag` keeps the enrollment-time value instead of the assertion-time one.
 - `on-email-otp`: the docs now say plainly that **the record must be treated as the code until it
   expires** (family#128). The salt is stored beside a SHA-256 digest of a 6-digit code, so anyone
   holding the record recovers the code in milliseconds. No code change.

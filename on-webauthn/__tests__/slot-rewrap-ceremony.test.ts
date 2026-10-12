@@ -213,6 +213,41 @@ describe('webAuthnSlotRewrapCeremony — RP ID', () => {
     const asserted = creds.get.mock.calls[0]![0] as CredentialRequestOptions
     expect(asserted.publicKey!.rpId).toBe('example.com')
   })
+
+  // family#127 — one rotateSecret must not strip the RP ID from the slot.
+  it('carries the asserted rpId into the returned slot meta', async () => {
+    const { slot, rawId } = await enrolledSlot()
+    const withRpId = { ...slot, meta: { ...(slot.meta as object), rpId: 'example.com' } }
+
+    stubWebAuthn({ getReturn: mockGetCredential({ rawId, prfOutput: FIXED_PRF_OUTPUT }) })
+    const out = await webAuthnSlotRewrapCeremony(ctxFor(withRpId as KeyringAuthenticator))
+    expect((out.meta as { rpId?: string }).rpId).toBe('example.com')
+  })
+
+  it('records an options.rpId override in the returned slot meta', async () => {
+    const { slot, rawId } = await enrolledSlot()
+
+    stubWebAuthn({ getReturn: mockGetCredential({ rawId, prfOutput: FIXED_PRF_OUTPUT }) })
+    const out = await webAuthnSlotRewrapCeremony(ctxFor(slot), { rpId: 'example.com' })
+    expect((out.meta as { rpId?: string }).rpId).toBe('example.com')
+  })
+
+  it('writes no rpId key when neither the slot nor options carry one', async () => {
+    const { slot, rawId } = await enrolledSlot()
+
+    stubWebAuthn({ getReturn: mockGetCredential({ rawId, prfOutput: FIXED_PRF_OUTPUT }) })
+    const out = await webAuthnSlotRewrapCeremony(ctxFor(slot))
+    expect('rpId' in (out.meta as object)).toBe(false)
+  })
+
+  it('keeps the ENROLLMENT-time beFlag, not the assertion-time one', async () => {
+    const { slot, rawId } = await enrolledSlot()
+    const enrolledWithoutBe = { ...slot, meta: { ...(slot.meta as object), beFlag: false } }
+
+    stubWebAuthn({ getReturn: mockGetCredential({ rawId, prfOutput: FIXED_PRF_OUTPUT, beFlag: true }) })
+    const out = await webAuthnSlotRewrapCeremony(ctxFor(enrolledWithoutBe as KeyringAuthenticator))
+    expect((out.meta as { beFlag?: boolean }).beFlag).toBe(false)
+  })
 })
 
 // ─── Round-trip ──────────────────────────────────────────────────────────
