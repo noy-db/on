@@ -24,7 +24,9 @@
  *      where `deviceSecret` is a per-device random value stored in IndexedDB
  *      or localStorage (never transmitted). A stable random `deviceId` is
  *      generated beside it and stored with it — it identifies THIS
- *      partition's entry on the key-connector.
+ *      partition's entry on the key-connector. Both are stored per
+ *      (provider, sub, vault), so one partition can hold several vaults'
+ *      enrollments for the same subject (family#126).
  *   3. `serverHalf = KEK ⊕ deviceHalf`.
  *   4. `serverHalf` is encrypted with the OIDC access token and sent to the
  *      key-connector server endpoint. The server stores it indexed by
@@ -377,30 +379,54 @@ export interface UnlockOidcOptions {
 const DEVICE_SECRET_PREFIX = 'noydb:oidc:device-secret:'
 const DEVICE_ID_PREFIX = 'noydb:oidc:device-id:'
 
-function getDeviceSecret(sub: string, storage?: Storage): Uint8Array | null {
+/**
+ * Which enrollment a partition's device material belongs to. Scoped by
+ * provider, sub AND vault (family#126): keyed by `sub` alone, enrolling a
+ * second vault overwrote the first vault's secret and id. Each component is
+ * URI-encoded, because a `sub` is an arbitrary string and may contain `:`.
+ */
+interface DeviceSlot {
+  readonly provider: string
+  readonly sub: string
+  readonly vault: string
+}
+
+function slotKey(prefix: string, slot: DeviceSlot): string {
+  return prefix + [slot.provider, slot.sub, slot.vault].map(encodeURIComponent).join(':')
+}
+
+/**
+ * Read the scoped key, falling back to the pre-#126 sub-only key a partition
+ * enrolled by an older client still holds. Never written: that key may serve
+ * another vault's older enrollment.
+ */
+function readSlot(prefix: string, slot: DeviceSlot, storage?: Storage): string | null {
   const store = storage ?? (typeof localStorage !== 'undefined' ? localStorage : null)
   if (!store) return null
-  const raw = store.getItem(DEVICE_SECRET_PREFIX + sub)
-  if (!raw) return null
-  return base64ToBuffer(raw)
+  return store.getItem(slotKey(prefix, slot)) ?? store.getItem(prefix + slot.sub)
 }
 
-function saveDeviceSecret(sub: string, secret: Uint8Array, storage?: Storage): void {
+function writeSlot(prefix: string, slot: DeviceSlot, value: string, storage?: Storage): void {
   const store = storage ?? (typeof localStorage !== 'undefined' ? localStorage : null)
   if (!store) throw new ValidationError('localStorage is not available in this environment')
-  store.setItem(DEVICE_SECRET_PREFIX + sub, bufferToBase64(secret))
+  store.setItem(slotKey(prefix, slot), value)
 }
 
-function getStoredDeviceId(sub: string, storage?: Storage): string | null {
-  const store = storage ?? (typeof localStorage !== 'undefined' ? localStorage : null)
-  if (!store) return null
-  return store.getItem(DEVICE_ID_PREFIX + sub)
+function getDeviceSecret(slot: DeviceSlot, storage?: Storage): Uint8Array | null {
+  const raw = readSlot(DEVICE_SECRET_PREFIX, slot, storage)
+  return raw ? base64ToBuffer(raw) : null
 }
 
-function saveDeviceId(sub: string, deviceId: string, storage?: Storage): void {
-  const store = storage ?? (typeof localStorage !== 'undefined' ? localStorage : null)
-  if (!store) throw new ValidationError('localStorage is not available in this environment')
-  store.setItem(DEVICE_ID_PREFIX + sub, deviceId)
+function saveDeviceSecret(slot: DeviceSlot, secret: Uint8Array, storage?: Storage): void {
+  writeSlot(DEVICE_SECRET_PREFIX, slot, bufferToBase64(secret), storage)
+}
+
+function getStoredDeviceId(slot: DeviceSlot, storage?: Storage): string | null {
+  return readSlot(DEVICE_ID_PREFIX, slot, storage)
+}
+
+function saveDeviceId(slot: DeviceSlot, deviceId: string, storage?: Storage): void {
+  writeSlot(DEVICE_ID_PREFIX, slot, deviceId, storage)
 }
 
 // ─── HKDF device half derivation ──────────────────────────────────────
@@ -617,8 +643,9 @@ export async function enrollOidc(
   const deviceSecret = globalThis.crypto.getRandomValues(new Uint8Array(32))
   const deviceKeyId = bufferToBase64(globalThis.crypto.getRandomValues(new Uint8Array(16)))
   const deviceId = generateULID()
-  saveDeviceSecret(claims.sub, deviceSecret, options.storage)
-  saveDeviceId(claims.sub, deviceId, options.storage)
+  const slot: DeviceSlot = { provider: config.name, sub: claims.sub, vault }
+  saveDeviceSecret(slot, deviceSecret, options.storage)
+  saveDeviceId(slot, deviceId, options.storage)
 
   // Pad payload to the next 16-byte boundary to avoid leaking length
   const padLen = (16 - (payloadBytes.length % 16)) % 16
@@ -740,7 +767,8 @@ export async function unlockOidc(
   const { sub, vault } = enrollment
 
   // Load the device secret
-  const deviceSecret = getDeviceSecret(sub, options.storage)
+  const slot: DeviceSlot = { provider: enrollment.providerName, sub, vault }
+  const deviceSecret = getDeviceSecret(slot, options.storage)
   if (!deviceSecret) {
     throw new OidcDeviceSecretNotFoundError(sub)
   }
@@ -749,7 +777,7 @@ export async function unlockOidc(
   // fall back to the partition-local stored copy. Both absent = legacy
   // (pre-per-device) enrollment — the GET goes out without deviceId and a
   // legacy single-entry server still resolves it by `sub` alone.
-  const deviceId = enrollment.deviceId ?? getStoredDeviceId(sub, options.storage) ?? undefined
+  const deviceId = enrollment.deviceId ?? getStoredDeviceId(slot, options.storage) ?? undefined
 
   // Fetch the server half from the key-connector
   const { encryptedServerHalf, iv: ivBase64 } = await getServerHalf(
