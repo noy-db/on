@@ -24,6 +24,17 @@ place. Do not apply hub's correct-alongside-in-the-next-entry constraint to this
 - `@noy-db/shamir` had no consumer but `on-shamir` and is **deprecated** in favour of it.
 - The `packageSeams` entry for `@noy-db/shamir` leaves `family.config.json`: no package here imports
   it, and the `architecture` gate refuses a stale seam.
+- ⛔ **`on-oidc`: the reconstructed identity is authenticated** (family#125). The key-connector is sent
+  the ID token as its Bearer credential, so it holds the transport key and can re-encrypt any
+  serverHalf; XOR is bit-malleable, so `'ro'` → `'rw'` was a known-offset flip. `enrollOidc` now
+  HMAC-tags the padded payload under HKDF(deviceSecret, sub, vault) and returns the tag on the
+  enrollment record as `integrityTag` (never sent); `unlockOidc` verifies it before parsing and throws
+  the new `OidcEnrollmentIntegrityError` (`reason: 'tampered'`) on a mismatch.
+- ⚠️ **Breaking for existing OIDC devices:** an enrollment record without `integrityTag` is refused
+  (`reason: 'legacy-enrollment'`) — its role and permissions cannot be verified. Each such partition
+  enrolls again through a firm re-invite (`enrollOidcFromInvite`).
+- `OidcTokenError`'s doc no longer claims a client-side "wrong issuer" check; `iss`/`aud` are verified
+  by the key-connector with the signature.
 - `on-webauthn`: `webAuthnSlotRewrapCeremony` keeps the slot's `rpId` (family#127). It asserted under
   `meta.rpId` but returned meta without it, so one `rotateSecret` stripped the RP ID and the next
   unlock defaulted to the page hostname — a credential enrolled under `example.com` became invisible to
