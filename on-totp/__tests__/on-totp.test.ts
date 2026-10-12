@@ -6,6 +6,7 @@ import {
   totpProvisioningUri,
   generateTotpCode,
   verifyTotp,
+  verifyTotpStep,
 } from '../src/index.js'
 
 describe('base32', () => {
@@ -157,5 +158,40 @@ describe('verifyTotp', () => {
     // RFC vector at T=59 is 287082. Verify at T=91 (different step) with window=0.
     const ok = await verifyTotp(secret, '287082', { digits: 8, timestamp: 91, window: 0 })
     expect(ok).toBe(false)
+  })
+})
+
+// ─── family#129 — RFC 6238 §5.2: an accepted code must not verify again ─────
+
+describe('replay prevention', () => {
+  const secret = SECRET_SHA1
+  const t = 1111111109  // step 37037036
+
+  it('verifyTotpStep returns the matched step, null on a miss', async () => {
+    const atT = await verifyTotpStep(secret, '07081804', { digits: 8, timestamp: t })
+    expect(atT).toBe(Math.floor(t / 30))
+    expect(await verifyTotpStep(secret, '00000000', { digits: 8, timestamp: t })).toBeNull()
+  })
+
+  it('a code is refused once its step is recorded as lastUsedStep — the same code, within the window', async () => {
+    const step = await verifyTotpStep(secret, '07081804', { digits: 8, timestamp: t })
+    expect(step).not.toBeNull()
+    // Replayed 20 s later — still inside the ±1 window — after the caller persisted the step.
+    expect(await verifyTotp(secret, '07081804', { digits: 8, timestamp: t + 20, lastUsedStep: step! })).toBe(false)
+    expect(await verifyTotpStep(secret, '07081804', { digits: 8, timestamp: t + 20, lastUsedStep: step! })).toBeNull()
+  })
+
+  it('a code from an EARLIER step than the last accepted one is refused too', async () => {
+    const step = Math.floor(t / 30)
+    // The previous step's code is inside the drift window at t, but older than what was accepted.
+    const previous = await verifyTotpStep(secret, '07081804', { digits: 8, timestamp: t + 30 })
+    expect(previous).toBe(step)  // positive control: accepted without lastUsedStep
+    expect(await verifyTotp(secret, '07081804', { digits: 8, timestamp: t + 30, lastUsedStep: step + 1 })).toBe(false)
+  })
+
+  it('the next step still verifies after lastUsedStep is recorded', async () => {
+    const step = Math.floor(t / 30)
+    const nextCode = await verifyTotpStep(secret, '07081804', { digits: 8, timestamp: t, lastUsedStep: step - 1 })
+    expect(nextCode).toBe(step)
   })
 })
