@@ -33,6 +33,9 @@ place. Do not apply hub's correct-alongside-in-the-next-entry constraint to this
 - ⚠️ **Breaking for existing OIDC devices:** an enrollment record without `integrityTag` is refused
   (`reason: 'legacy-enrollment'`) — its role and permissions cannot be verified. Each such partition
   enrolls again through a firm re-invite (`enrollOidcFromInvite`).
+- `on-oidc`: device secret and device id are stored per (provider, sub, vault) (family#126). Keyed by `sub`
+  alone, enrolling a second vault overwrote the first vault's material and broke its unlock. A partition
+  holding the older sub-only keys still reads them; they are never written again.
 - `OidcTokenError`'s doc no longer claims a client-side "wrong issuer" check; `iss`/`aud` are verified
   by the key-connector with the signature.
 

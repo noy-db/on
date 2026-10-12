@@ -161,6 +161,10 @@ describe('family#125 — reconstructed identity integrity', () => {
     vi.stubGlobal('fetch', mockFetch)
     const token = makeIdToken()
     const enrollment = await enrollOidc(await makeKeyring(), 'company-a', CONFIG, token)
+    // Device material is stored per vault (family#126); copy company-a's
+    // secret into company-b's slot so the unlock reaches the MAC check.
+    const secret = localStorage.getItem('noydb:oidc:device-secret:TestProvider:integrity-user:company-a')!
+    localStorage.setItem('noydb:oidc:device-secret:TestProvider:integrity-user:company-b', secret)
 
     await expect(
       unlockOidc({ ...enrollment, vault: 'company-b' }, CONFIG, token),
