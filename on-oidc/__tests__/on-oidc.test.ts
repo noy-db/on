@@ -331,21 +331,11 @@ describe('enrollOidc + unlockOidc round-trip', () => {
     // One token for both — the replay-mock requires byte-identical
     // transport keys (see the round-trip test above, #564).
     const token = makeIdToken({ sub })
-    await enrollOidc(keyring, 'company-a', TEST_CONFIG, token)
-    const unlocked = await unlockOidc(enrollment_placeholder(), TEST_CONFIG, token)
+    // The returned record, not a hand-built one: it carries the integrity
+    // tag `unlockOidc` now requires (family#125).
+    const enrollment = await enrollOidc(keyring, 'company-a', TEST_CONFIG, token)
+    const unlocked = await unlockOidc(enrollment, TEST_CONFIG, token)
     expect(unlocked.permissions).toEqual({ invoices: 'rw', clients: 'rw' })
-
-    function enrollment_placeholder() {
-      return {
-        _noydb_oidc: 1 as const,
-        providerName: 'TestProvider',
-        sub,
-        vault: 'company-a',
-        enrolledAt: new Date().toISOString(),
-        deviceKeyId: 'ignored',
-        enrollmentCount: 1,
-      }
-    }
   })
 })
 
