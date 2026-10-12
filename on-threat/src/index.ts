@@ -108,6 +108,10 @@ export function recordFailure(state: LockoutState, config: LockoutConfig = {}): 
   const cooldownMs = config.cooldownMs ?? 5 * 60 * 1000
   const maxStrikes = config.maxStrikes ?? 3
 
+  // `wiped` latches (see `recordSuccess`); nothing below may report a wiped
+  // keyring as unlocked — the window reset would (family#130).
+  if (state.wiped) return { locked: true, wipe: true }
+
   const now = new Date()
   const nowMs = now.getTime()
 

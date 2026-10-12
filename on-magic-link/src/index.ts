@@ -370,9 +370,11 @@ export interface ClaimedMagicLinkGrant {
 
 export interface ClaimMagicLinkDelegationResult {
   /**
-   * False when the server secret is wrong, the vault is wrong, or
-   * every grant is malformed. A `true` with an empty `grants` array
-   * means the record was deleted (revoked) between issue and claim.
+   * False when NO grant record is found under the token: the server
+   * secret is wrong, the vault is wrong, or the grants were deleted
+   * (revoked) — all three indistinguishable from here. A `true` with an
+   * empty `grants` array means records WERE found but none unwrapped —
+   * corruption, not revocation.
    */
   readonly valid: boolean
   readonly grants: readonly ClaimedMagicLinkGrant[]
