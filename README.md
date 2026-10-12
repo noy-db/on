@@ -40,8 +40,8 @@ pnpm check:peer-floor     # every hub-bound package must COMPILE at the oldest h
 
 ## Coverage, stated honestly
 
-Only `on-password` and `on-webauthn` run the published `@noy-db/test-ceremony-conformance` kit. The
-other seven are verified by their own suites against the published hub — which is real coverage, but
+Only `on-password` and `on-webauthn` run the published ceremony conformance kit (`@noy-db/ports`). The
+other eight are verified by their own suites against the published hub — which is real coverage, but
 it is not *external-author* coverage, and a green suite here should not be read as a kit run.
 
 Publishing happens from a **GitHub Release** triggering `release.yml`, never a raw `npm publish`.

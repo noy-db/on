@@ -66,6 +66,20 @@ describe('lockout policy', () => {
     expect(s.wiped).toBe(true)
     expect(isLocked(s)).toBe(true) // wiped implies locked forever
   })
+
+  it('a failure recorded after a wipe still reports locked + wipe, even once the window has passed (family#130)', () => {
+    const s = initialLockoutState()
+    // threshold 2: after the window resets, ONE failure stays under it — the
+    // path that answered `locked: false`. (threshold 1 re-trips and hides it.)
+    const cfg = { threshold: 2, windowMs: 1, cooldownMs: 1, maxStrikes: 1 }
+    recordFailure(s, cfg)
+    expect(recordFailure(s, cfg).wipe).toBe(true)
+    // Age the window out: before the fix this reset failures and answered unlocked.
+    s.windowStart = new Date(Date.now() - 60_000).toISOString()
+    const after = recordFailure(s, cfg)
+    expect(after).toEqual({ locked: true, wipe: true })
+    expect(isLocked(s)).toBe(true)
+  })
 })
 
 describe('duress secret', () => {

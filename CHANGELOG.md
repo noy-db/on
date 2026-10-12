@@ -24,6 +24,12 @@ place. Do not apply hub's correct-alongside-in-the-next-entry constraint to this
 - `@noy-db/shamir` had no consumer but `on-shamir` and is **deprecated** in favour of it.
 - The `packageSeams` entry for `@noy-db/shamir` leaves `family.config.json`: no package here imports
   it, and the `architecture` gate refuses a stale seam.
+- `on-threat`: `recordFailure` on a wiped state answers `{ locked: true, wipe: true }` (family#130). It
+  set `wiped` but no `lockedUntil`, so once the window aged out a later failure reset the count and
+  reported `locked: false` while `isLocked` said true.
+- `on-magic-link`: `ClaimMagicLinkDelegationResult.valid`'s doc matched to the code (family#130) —
+  revocation yields `valid: false` (no record found), and `valid: true` with no grants means
+  corruption. The doc had them the other way round.
 
 ## 0.10.0-pre.0
 
