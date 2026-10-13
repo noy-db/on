@@ -12,7 +12,24 @@ repo does not have. See `scripts/version-set.mjs` for the mechanism that replace
 its tarball and therefore immutable once published, a mistake here can simply be corrected in
 place. Do not apply hub's correct-alongside-in-the-next-entry constraint to this file.
 
-## Unreleased
+## 0.10.0-pre.2
+
+**Ten unlock / auth primitives move to `0.10.0-pre.2`** in the whole-family cut, against
+`@noy-db/hub@0.10.0-pre.2`. There is no `on` `0.10.0-pre.1`: the line follows core's pre number.
+
+| package | change |
+|---|---|
+| `on-oidc` | ⚠️ **breaking for enrolled devices** — identity integrity tag, per-vault device storage |
+| `on-shamir` | math in-package, **no dependencies** — surface unchanged |
+| `on-totp` | replay prevention: `verifyTotpStep`, `lastUsedStep` (additive) |
+| `on-webauthn` | rewrap keeps `rpId` and the enrollment-time `beFlag` |
+| `on-threat` | wiped state stays locked |
+| `on-email-otp`, `on-magic-link` | documentation only |
+| `on-password`, `on-pin`, `on-recovery` | no source change — lockstep version only |
+
+- Exact dev pins on `@noy-db/hub` and `@noy-db/ports` move to `0.10.0-pre.2`.
+- ⛔ **`peerDependencies` deliberately untouched.** `^0.10.0-pre.0` already admits `0.10.0-pre.2`
+  (same minor), so no append is owed.
 
 - ⭐ **`on-shamir` now ships the Shamir math itself** (family#73). The GF(2^8) arithmetic, the
   split/combine and the share codecs (`gf256.ts`, `shamir.ts`, `share-format.ts`, 493 lines, zero
@@ -21,7 +38,7 @@ place. Do not apply hub's correct-alongside-in-the-next-entry constraint to this
   dependencies at all — its only edge is the `@noy-db/hub` peer.
 - All 16 symbols (14 functions, 2 types) `on-shamir` re-exported from `@noy-db/shamir` are still exported from its
   root under the **same names**; the published surface is unchanged.
-- `@noy-db/shamir` had no consumer but `on-shamir` and is **deprecated** in favour of it.
+- `@noy-db/shamir` had no consumer but `on-shamir`; it is deprecated in favour of it at the next public cut.
 - The `packageSeams` entry for `@noy-db/shamir` leaves `family.config.json`: no package here imports
   it, and the `architecture` gate refuses a stale seam.
 - ⛔ **`on-oidc`: the reconstructed identity is authenticated** (family#125). The key-connector is sent
